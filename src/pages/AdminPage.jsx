@@ -5,9 +5,19 @@ import AdminLayout from '../layouts/AdminLayout';
 import AdminDashboard from '../components/admin/AdminDashboard';
 import TeamForm from '../components/admin/TeamForm';
 import PlayerImport from '../components/admin/PlayerImport';
+import AllPlayersView from '../components/admin/AllPlayersView'
 import AuctionControls from '../components/admin/AuctionControls';
-import { ADMIN_TABS } from '../utils/constants';
 import { useNotification } from '../context/NotificationContext';
+
+// Import ADMIN_TABS directly (not the default export)
+const ADMIN_TABS = [
+  { id: 'dashboard', label: 'Dashboard' },
+  { id: 'teams', label: 'Team Management' },
+  { id: 'players', label: 'Player Import' },
+  { id: 'playersList', label: 'Players List' },
+  { id: 'auction', label: 'Auction Controls' },
+  { id: 'settings', label: 'Settings' }
+];
 
 const AdminPage = () => {
   const location = useLocation();
@@ -52,6 +62,8 @@ const AdminPage = () => {
   // Handle player import success
   const handleImportComplete = (result) => {
     showSuccess(`Successfully imported ${result.totalCount} players`);
+    // Navigate to the player list view after successful import
+    handleTabChange('playersList');
   };
   
   // Render content based on active tab
@@ -62,6 +74,9 @@ const AdminPage = () => {
       
       case 'players':
         return <PlayerImport onImportComplete={handleImportComplete} />;
+      
+      case 'playersList':
+        return <AllPlayersView />;
       
       case 'auction':
         return <AuctionControls />;
@@ -87,6 +102,12 @@ const AdminPage = () => {
         return {
           title: 'Player Import',
           description: 'Import players from CSV or Excel files'
+        };
+      
+      case 'playersList':
+        return {
+          title: 'Players List',
+          description: 'View and manage all imported players'
         };
       
       case 'auction':

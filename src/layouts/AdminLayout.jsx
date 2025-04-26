@@ -75,8 +75,8 @@ const AdminLayout = ({
       
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-grow">
         <div className="flex flex-col md:flex-row gap-6">
-          {/* Sidebar (Desktop) */}
-          <aside className="hidden md:block w-64 bg-white p-4 rounded-lg shadow">
+          {/* Sidebar (Desktop) - Reduced width from w-64 to w-52 */}
+          <aside className="hidden md:block w-52 bg-white p-4 rounded-lg shadow">
             <nav className="space-y-1">
               {ADMIN_TABS.map(tab => (
                 <button
@@ -164,7 +164,7 @@ const AdminLayout = ({
             </div>
           )}
           
-          {/* Main Content */}
+          {/* Main Content - Expanded to use more space */}
           <div className="flex-1">
             {children}
           </div>

@@ -116,11 +116,14 @@ export const NAV_LINKS = [
 
 // Admin tabs
 export const ADMIN_TABS = [
+  { id: 'dashboard', label: 'Dashboard' },
   { id: 'teams', label: 'Team Management' },
   { id: 'players', label: 'Player Import' },
+  { id: 'playersList', label: 'Players List' }, // New tab for player list view
   { id: 'auction', label: 'Auction Controls' },
   { id: 'settings', label: 'Settings' }
 ];
+
 
 // Required fields for player import
 export const PLAYER_IMPORT_REQUIRED_FIELDS = [
