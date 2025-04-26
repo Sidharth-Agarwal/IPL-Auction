@@ -1,205 +1,146 @@
 // src/services/playerService.js
-import { db } from "../firebase/config";
 import { 
-  collection, 
-  addDoc, 
-  doc, 
-  updateDoc, 
-  deleteDoc, 
-  getDoc, 
-  getDocs,
-  query,
-  where,
-  orderBy
-} from "firebase/firestore";
-
-const playersCollection = collection(db, "players");
-
-// Add a single player
-export const addPlayer = async (playerData) => {
-  try {
-    const player = {
-      ...playerData,
-      status: "available", // available, sold, unsold
-      soldTo: null,
-      soldAmount: 0,
-      createdAt: new Date()
-    };
-    
-    const docRef = await addDoc(playersCollection, player);
-    return { id: docRef.id, ...player };
-  } catch (error) {
-    console.error("Error adding player:", error);
-    throw error;
-  }
-};
-
-// Add multiple players (bulk import)
-export const addPlayers = async (playersArray) => {
-  try {
-    const results = [];
-    
-    for (const playerData of playersArray) {
-      const player = {
-        ...playerData,
-        status: "available",
-        soldTo: null,
-        soldAmount: 0,
-        createdAt: new Date()
-      };
-      
-      const docRef = await addDoc(playersCollection, player);
-      results.push({ id: docRef.id, ...player });
-    }
-    
-    return results;
-  } catch (error) {
-    console.error("Error adding players:", error);
-    throw error;
-  }
-};
-
-// Get all players
-export const getAllPlayers = async () => {
-  try {
-    const querySnapshot = await getDocs(playersCollection);
-    return querySnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
-  } catch (error) {
-    console.error("Error getting players:", error);
-    return []; // Return empty array instead of throwing to prevent UI errors
-  }
-};
-
-// Get players by status - UPDATED to handle index requirement
-export const getPlayersByStatus = async (status) => {
-  try {
-    // Try using just the where clause without orderBy to avoid requiring the index
-    const q = query(
-      playersCollection, 
-      where("status", "==", status)
-      // orderBy removed to avoid requiring a composite index
-    );
-    
-    const querySnapshot = await getDocs(q);
-    const players = querySnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
-    
-    // Sort locally instead if needed
-    players.sort((a, b) => {
-      if (a.createdAt && b.createdAt) {
-        return a.createdAt.seconds - b.createdAt.seconds;
+    collection, 
+    addDoc, 
+    getDocs, 
+    updateDoc, 
+    deleteDoc, 
+    doc,
+    query,
+    where
+  } from 'firebase/firestore';
+  import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+  import { db, storage } from './firebaseConfig';
+  import Papa from 'papaparse';
+  
+  export const playerService = {
+    // Import players from CSV
+    async importPlayersFromCSV(file) {
+      return new Promise((resolve, reject) => {
+        Papa.parse(file, {
+          header: true,
+          complete: async (results) => {
+            try {
+              const importedPlayers = [];
+              for (const playerData of results.data) {
+                // Validate and transform player data
+                const player = {
+                  name: playerData.name || '',
+                  basePrice: parseFloat(playerData.basePrice) || 0,
+                  category: playerData.category || '',
+                  status: 'available',
+                  stats: {
+                    matches: parseInt(playerData.matches) || 0,
+                    runs: parseInt(playerData.runs) || 0,
+                    average: parseFloat(playerData.average) || 0
+                  },
+                  createdAt: new Date()
+                };
+  
+                // Add player to Firestore
+                const docRef = await addDoc(collection(db, 'players'), player);
+                importedPlayers.push({ id: docRef.id, ...player });
+              }
+              resolve(importedPlayers);
+            } catch (error) {
+              reject(error);
+            }
+          },
+          error: (error) => reject(error)
+        });
+      });
+    },
+  
+    // Create a single player
+    async createPlayer(playerData, imageFile = null) {
+      try {
+        // Upload image if provided
+        let imageUrl = '';
+        if (imageFile) {
+          const storageRef = ref(storage, `players/${Date.now()}_${imageFile.name}`);
+          const snapshot = await uploadBytes(storageRef, imageFile);
+          imageUrl = await getDownloadURL(snapshot.ref);
+        }
+  
+        // Prepare player object
+        const player = {
+          name: playerData.name,
+          basePrice: parseFloat(playerData.basePrice) || 0,
+          category: playerData.category,
+          status: 'available',
+          imageUrl: imageUrl,
+          stats: {
+            matches: parseInt(playerData.matches) || 0,
+            runs: parseInt(playerData.runs) || 0,
+            average: parseFloat(playerData.average) || 0
+          },
+          createdAt: new Date()
+        };
+  
+        // Add to Firestore
+        const docRef = await addDoc(collection(db, 'players'), player);
+        return { id: docRef.id, ...player };
+      } catch (error) {
+        console.error('Error creating player:', error);
+        throw error;
       }
-      return 0;
-    });
-    
-    return players;
-  } catch (error) {
-    console.error("Error getting players by status:", error);
-    return []; // Return empty array instead of throwing to prevent UI errors
-  }
-};
-
-// Alternative implementation with proper error handling and instructions for index creation
-export const getPlayersByStatusWithIndex = async (status) => {
-  try {
-    // This query requires a composite index on Firestore
-    const q = query(
-      playersCollection, 
-      where("status", "==", status),
-      orderBy("createdAt")
-    );
-    
-    const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
-  } catch (error) {
-    console.error("Error getting players by status:", error);
-    
-    // Handle the specific index error and provide clearer instructions
-    if (error.code === 'failed-precondition' && error.message.includes('requires an index')) {
-      console.info('This query requires a Firestore index. Please create the index by visiting the URL in the error message above.');
+    },
+  
+    // Get all players
+    async getAllPlayers() {
+      try {
+        const playersCollection = collection(db, 'players');
+        const snapshot = await getDocs(playersCollection);
+        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      } catch (error) {
+        console.error('Error fetching players:', error);
+        throw error;
+      }
+    },
+  
+    // Update a player
+    async updatePlayer(playerId, updateData, newImageFile = null) {
+      try {
+        const playerRef = doc(db, 'players', playerId);
+        
+        // Handle image upload if new image provided
+        if (newImageFile) {
+          const storageRef = ref(storage, `players/${Date.now()}_${newImageFile.name}`);
+          const snapshot = await uploadBytes(storageRef, newImageFile);
+          updateData.imageUrl = await getDownloadURL(snapshot.ref);
+        }
+  
+        // Update Firestore document
+        await updateDoc(playerRef, updateData);
+        return { id: playerId, ...updateData };
+      } catch (error) {
+        console.error('Error updating player:', error);
+        throw error;
+      }
+    },
+  
+    // Delete a player
+    async deletePlayer(playerId) {
+      try {
+        const playerRef = doc(db, 'players', playerId);
+        await deleteDoc(playerRef);
+        return playerId;
+      } catch (error) {
+        console.error('Error deleting player:', error);
+        throw error;
+      }
+    },
+  
+    // Get players by category
+    async getPlayersByCategory(category) {
+      try {
+        const playersRef = collection(db, 'players');
+        const q = query(playersRef, where('category', '==', category));
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      } catch (error) {
+        console.error('Error fetching players by category:', error);
+        throw error;
+      }
     }
-    
-    return []; // Return empty array instead of throwing to prevent UI errors
-  }
-};
-
-// Get a specific player
-export const getPlayer = async (playerId) => {
-  try {
-    const docRef = doc(db, "players", playerId);
-    const docSnap = await getDoc(docRef);
-    
-    if (docSnap.exists()) {
-      return { id: docSnap.id, ...docSnap.data() };
-    } else {
-      console.warn(`Player with ID ${playerId} not found`);
-      return null;
-    }
-  } catch (error) {
-    console.error("Error getting player:", error);
-    return null; // Return null instead of throwing
-  }
-};
-
-// Update player information
-export const updatePlayer = async (playerId, playerData) => {
-  try {
-    const playerRef = doc(db, "players", playerId);
-    await updateDoc(playerRef, playerData);
-    return { id: playerId, ...playerData };
-  } catch (error) {
-    console.error("Error updating player:", error);
-    throw error;
-  }
-};
-
-// Mark player as sold
-export const markPlayerAsSold = async (playerId, teamId, amount) => {
-  try {
-    const playerRef = doc(db, "players", playerId);
-    await updateDoc(playerRef, {
-      status: "sold",
-      soldTo: teamId,
-      soldAmount: amount
-    });
-    return { success: true };
-  } catch (error) {
-    console.error("Error marking player as sold:", error);
-    throw error;
-  }
-};
-
-// Mark player as unsold
-export const markPlayerAsUnsold = async (playerId) => {
-  try {
-    const playerRef = doc(db, "players", playerId);
-    await updateDoc(playerRef, {
-      status: "unsold",
-      soldTo: null,
-      soldAmount: 0
-    });
-    return { success: true };
-  } catch (error) {
-    console.error("Error marking player as unsold:", error);
-    throw error;
-  }
-};
-
-// Delete a player
-export const deletePlayer = async (playerId) => {
-  try {
-    await deleteDoc(doc(db, "players", playerId));
-    return playerId;
-  } catch (error) {
-    console.error("Error deleting player:", error);
-    throw error;
-  }
-};
+  };

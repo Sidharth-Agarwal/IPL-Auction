@@ -1,322 +1,254 @@
-// src/components/players/PlayerList.jsx
-import React, { useState, useEffect, useMemo } from 'react';
-import PropTypes from 'prop-types';
-import { getAllPlayers, getPlayersByStatus } from '../../services/playerService';
-import PlayerCard from './PlayerCard';
-import Card from '../common/Card';
-import Button from '../common/Button';
-import Loading from '../common/Loading';
-import ErrorMessage from '../common/ErrorMessage';
-import { PLAYER_STATUS, PLAYER_ROLES } from '../../utils/constants';
+import React, { useState, useEffect } from 'react';
+import { playerService } from '../../services/playerService';
 
-const PlayerList = ({ 
-  onSelectPlayer = null, 
-  filterByStatus = null,
-  showFilters = true,
-  title = 'Players',
-  emptyMessage = 'No players found',
-  className = '',
-  gridCols = 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4',
-  limit = null,
-}) => {
+const PlayerList = () => {
   const [players, setPlayers] = useState([]);
-  const [filteredPlayers, setFilteredPlayers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [selectedPlayerId, setSelectedPlayerId] = useState(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedRole, setSelectedRole] = useState('all');
-  const [selectedStatus, setSelectedStatus] = useState(filterByStatus || 'all');
-  const [sortBy, setSortBy] = useState('name');
-  const [sortOrder, setSortOrder] = useState('asc');
+  const [error, setError] = useState('');
+  const [editingPlayer, setEditingPlayer] = useState(null);
+  const [selectedImage, setSelectedImage] = useState(null);
 
-  // Load players on initial render
+  // Fetch players on component mount
   useEffect(() => {
-    const fetchPlayers = async () => {
-      try {
-        setLoading(true);
-        let playersData;
-        
-        if (filterByStatus) {
-          playersData = await getPlayersByStatus(filterByStatus);
-          setSelectedStatus(filterByStatus);
-        } else {
-          playersData = await getAllPlayers();
-        }
-        
-        setPlayers(playersData);
-        setError(null);
-      } catch (err) {
-        console.error('Error loading players:', err);
-        setError('Failed to load players. Please try again.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchPlayers();
-  }, [filterByStatus]);
+  }, []);
 
-  // Get unique roles from players for dropdown filter
-  const roles = useMemo(() => {
-    const uniqueRoles = [...new Set(players.map(player => player.role).filter(Boolean))];
-    return ['all', ...uniqueRoles];
-  }, [players]);
+  const fetchPlayers = async () => {
+    try {
+      setLoading(true);
+      const fetchedPlayers = await playerService.getAllPlayers();
+      setPlayers(fetchedPlayers);
+      setLoading(false);
+    } catch (err) {
+      setError('Failed to fetch players');
+      setLoading(false);
+    }
+  };
 
-  // Apply filters and sorting
-  useEffect(() => {
-    let result = [...players];
-    
-    // Apply status filter
-    if (selectedStatus !== 'all') {
-      result = result.filter(player => player.status === selectedStatus);
+  // Handle player deletion
+  const handleDeletePlayer = async (playerId) => {
+    if (window.confirm('Are you sure you want to delete this player?')) {
+      try {
+        await playerService.deletePlayer(playerId);
+        setPlayers(players.filter(player => player.id !== playerId));
+      } catch (err) {
+        setError('Failed to delete player');
+      }
     }
-    
-    // Apply role filter
-    if (selectedRole !== 'all') {
-      result = result.filter(player => player.role === selectedRole);
-    }
-    
-    // Apply search term
-    if (searchTerm.trim() !== '') {
-      const term = searchTerm.toLowerCase();
-      result = result.filter(player => 
-        player.name?.toLowerCase().includes(term) ||
-        (player.role && player.role.toLowerCase().includes(term)) ||
-        (player.battingStyle && player.battingStyle.toLowerCase().includes(term)) ||
-        (player.bowlingStyle && player.bowlingStyle.toLowerCase().includes(term))
+  };
+
+  // Start editing a player
+  const handleEditPlayer = (player) => {
+    setEditingPlayer({...player});
+    setSelectedImage(null);
+  };
+
+  // Handle input change in edit mode
+  const handleEditInputChange = (e) => {
+    const { name, value } = e.target;
+    setEditingPlayer(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  // Handle image selection for editing
+  const handleEditImageChange = (e) => {
+    const file = e.target.files[0];
+    setSelectedImage(file);
+  };
+
+  // Save edited player
+  const handleSavePlayer = async (e) => {
+    e.preventDefault();
+    try {
+      // Prepare update data
+      const updateData = {
+        name: editingPlayer.name,
+        basePrice: parseFloat(editingPlayer.basePrice),
+        category: editingPlayer.category,
+        stats: {
+          matches: parseInt(editingPlayer.stats.matches) || 0,
+          runs: parseInt(editingPlayer.stats.runs) || 0,
+          average: parseFloat(editingPlayer.stats.average) || 0
+        }
+      };
+
+      // Update player with optional image
+      const updatedPlayer = await playerService.updatePlayer(
+        editingPlayer.id, 
+        updateData, 
+        selectedImage
       );
-    }
-    
-    // Apply sorting
-    result.sort((a, b) => {
-      let valueA, valueB;
-      
-      switch (sortBy) {
-        case 'name':
-          valueA = a.name || '';
-          valueB = b.name || '';
-          break;
-        case 'basePrice':
-          valueA = a.basePrice || 0;
-          valueB = b.basePrice || 0;
-          break;
-        case 'role':
-          valueA = a.role || '';
-          valueB = b.role || '';
-          break;
-        default:
-          valueA = a.name || '';
-          valueB = b.name || '';
-      }
-      
-      // For strings, use localeCompare for proper sorting
-      if (typeof valueA === 'string' && typeof valueB === 'string') {
-        return sortOrder === 'asc' 
-          ? valueA.localeCompare(valueB)
-          : valueB.localeCompare(valueA);
-      }
-      
-      // For numbers, use simple comparison
-      return sortOrder === 'asc' ? valueA - valueB : valueB - valueA;
-    });
-    
-    // Apply limit if specified
-    if (limit && result.length > limit) {
-      result = result.slice(0, limit);
-    }
-    
-    setFilteredPlayers(result);
-  }, [players, selectedStatus, selectedRole, searchTerm, sortBy, sortOrder, limit]);
 
-  const handleSelectPlayer = (player) => {
-    setSelectedPlayerId(player.id);
-    if (onSelectPlayer) {
-      onSelectPlayer(player);
+      // Update players list
+      setPlayers(players.map(player => 
+        player.id === updatedPlayer.id ? {...player, ...updatedPlayer} : player
+      ));
+
+      // Reset editing state
+      setEditingPlayer(null);
+      setSelectedImage(null);
+    } catch (err) {
+      setError('Failed to update player');
+      console.error(err);
     }
   };
 
-  const handleClearFilters = () => {
-    setSearchTerm('');
-    setSelectedRole('all');
-    setSelectedStatus(filterByStatus || 'all');
-    setSortBy('name');
-    setSortOrder('asc');
-  };
-
-  // Toggle sort order when clicking on the same sort field
-  const handleSortClick = (field) => {
-    if (sortBy === field) {
-      setSortOrder(prevOrder => prevOrder === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortBy(field);
-      setSortOrder('asc');
-    }
-  };
-
+  // Render loading state
   if (loading) {
-    return <Loading text="Loading players..." />;
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="animate-spin rounded-full h-32 w-32 border-t-2 border-blue-500"></div>
+      </div>
+    );
   }
 
   return (
-    <div className={className}>
-      {showFilters && (
-        <Card className="mb-6">
-          <div className="p-4 space-y-4">
-            <div className="flex flex-col md:flex-row gap-4">
-              {/* Search */}
-              <div className="flex-grow">
-                <label htmlFor="search" className="block text-sm font-medium text-gray-700 mb-1">
-                  Search Players
-                </label>
-                <div className="relative rounded-md shadow-sm">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
-                  </div>
-                  <input
-                    type="text"
-                    id="search"
-                    className="block w-full pl-10 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                    placeholder="Search by name, role, or style..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
-                </div>
-              </div>
-              
-              {/* Status Filter */}
-              {!filterByStatus && (
-                <div>
-                  <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-1">
-                    Status
-                  </label>
-                  <select
-                    id="status"
-                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                    value={selectedStatus}
-                    onChange={(e) => setSelectedStatus(e.target.value)}
-                  >
-                    <option value="all">All Status</option>
-                    <option value={PLAYER_STATUS.AVAILABLE}>Available</option>
-                    <option value={PLAYER_STATUS.SOLD}>Sold</option>
-                    <option value={PLAYER_STATUS.UNSOLD}>Unsold</option>
-                  </select>
-                </div>
-              )}
-              
-              {/* Role Filter */}
-              <div>
-                <label htmlFor="role" className="block text-sm font-medium text-gray-700 mb-1">
-                  Role
-                </label>
-                <select
-                  id="role"
-                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                  value={selectedRole}
-                  onChange={(e) => setSelectedRole(e.target.value)}
-                >
-                  <option value="all">All Roles</option>
-                  {Object.values(PLAYER_ROLES).map(role => (
-                    <option key={role} value={role}>{role}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            
-            {/* Sort Controls */}
-            <div className="flex flex-wrap justify-between items-center pt-2">
-              <div className="flex flex-wrap items-center space-x-4">
-                <span className="text-sm font-medium text-gray-700">Sort by:</span>
-                <div className="flex space-x-2">
-                  <button
-                    className={`px-3 py-1 text-sm rounded-md ${
-                      sortBy === 'name' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-700'
-                    }`}
-                    onClick={() => handleSortClick('name')}
-                  >
-                    Name {sortBy === 'name' && (
-                      <span>{sortOrder === 'asc' ? '↑' : '↓'}</span>
-                    )}
-                  </button>
-                  <button
-                    className={`px-3 py-1 text-sm rounded-md ${
-                      sortBy === 'basePrice' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-700'
-                    }`}
-                    onClick={() => handleSortClick('basePrice')}
-                  >
-                    Price {sortBy === 'basePrice' && (
-                      <span>{sortOrder === 'asc' ? '↑' : '↓'}</span>
-                    )}
-                  </button>
-                  <button
-                    className={`px-3 py-1 text-sm rounded-md ${
-                      sortBy === 'role' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-700'
-                    }`}
-                    onClick={() => handleSortClick('role')}
-                  >
-                    Role {sortBy === 'role' && (
-                      <span>{sortOrder === 'asc' ? '↑' : '↓'}</span>
-                    )}
-                  </button>
-                </div>
-              </div>
-              
-              {/* Clear Filters */}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleClearFilters}
-                className="mt-2 sm:mt-0"
-              >
-                Clear Filters
-              </Button>
-            </div>
-            
-            {/* Filter Results */}
-            <div className="pt-2 border-t border-gray-200">
-              <p className="text-sm text-gray-600">
-                Showing {filteredPlayers.length} of {players.length} players
-              </p>
-            </div>
-          </div>
-        </Card>
-      )}
-      
+    <div className="container mx-auto p-6 bg-white shadow-md rounded-lg">
+      <h2 className="text-2xl font-bold mb-6 text-gray-800">Players List</h2>
+
+      {/* Error Message */}
       {error && (
-        <ErrorMessage message={error} />
+        <div className="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
+          {error}
+        </div>
       )}
-      
-      {filteredPlayers.length === 0 ? (
-        <Card className="text-center py-8">
-          <p className="text-gray-500">{emptyMessage}</p>
-        </Card>
-      ) : (
-        <div className={`grid ${gridCols} gap-6`}>
-          {filteredPlayers.map(player => (
-            <PlayerCard
-              key={player.id}
-              player={player}
-              onClick={onSelectPlayer ? handleSelectPlayer : undefined}
-              selected={player.id === selectedPlayerId}
-            />
-          ))}
+
+      {/* Players Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {players.map((player) => (
+          <div 
+            key={player.id} 
+            className="border rounded-lg p-4 shadow-sm bg-gray-50 relative"
+          >
+            {/* Player Edit Mode */}
+            {editingPlayer && editingPlayer.id === player.id ? (
+              <form onSubmit={handleSavePlayer} className="space-y-4">
+                <input 
+                  type="text"
+                  name="name"
+                  value={editingPlayer.name}
+                  onChange={handleEditInputChange}
+                  placeholder="Player Name"
+                  required
+                  className="w-full border rounded px-3 py-2"
+                />
+                <input 
+                  type="number"
+                  name="basePrice"
+                  value={editingPlayer.basePrice}
+                  onChange={handleEditInputChange}
+                  placeholder="Base Price"
+                  required
+                  className="w-full border rounded px-3 py-2"
+                />
+                <select 
+                  name="category"
+                  value={editingPlayer.category}
+                  onChange={handleEditInputChange}
+                  required
+                  className="w-full border rounded px-3 py-2"
+                >
+                  <option value="">Select Category</option>
+                  <option value="Batsman">Batsman</option>
+                  <option value="Bowler">Bowler</option>
+                  <option value="All-Rounder">All-Rounder</option>
+                  <option value="Wicket-Keeper">Wicket-Keeper</option>
+                </select>
+                <input 
+                  type="number"
+                  name="stats.matches"
+                  value={editingPlayer.stats.matches}
+                  onChange={handleEditInputChange}
+                  placeholder="Matches Played"
+                  className="w-full border rounded px-3 py-2"
+                />
+                <input 
+                  type="number"
+                  name="stats.runs"
+                  value={editingPlayer.stats.runs}
+                  onChange={handleEditInputChange}
+                  placeholder="Total Runs"
+                  className="w-full border rounded px-3 py-2"
+                />
+                <input 
+                  type="number"
+                  name="stats.average"
+                  step="0.01"
+                  value={editingPlayer.stats.average}
+                  onChange={handleEditInputChange}
+                  placeholder="Average"
+                  className="w-full border rounded px-3 py-2"
+                />
+                <input 
+                  type="file" 
+                  accept="image/*"
+                  onChange={handleEditImageChange}
+                  className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                />
+                <div className="flex space-x-2">
+                  <button 
+                    type="submit"
+                    className="flex-1 bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+                  >
+                    Save
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={() => setEditingPlayer(null)}
+                    className="flex-1 bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            ) : (
+              // Player View Mode
+              <>
+                {player.imageUrl && (
+                  <img 
+                    src={player.imageUrl} 
+                    alt={player.name} 
+                    className="w-32 h-32 object-cover rounded-full mx-auto mb-4"
+                  />
+                )}
+                <h3 className="text-xl font-bold text-center mb-2">{player.name}</h3>
+                <div className="text-center text-gray-600 space-y-1">
+                  <p>Category: {player.category}</p>
+                  <p>Base Price: {player.basePrice}</p>
+                  <p>Matches: {player.stats?.matches || 0}</p>
+                  <p>Runs: {player.stats?.runs || 0}</p>
+                  <p>Average: {player.stats?.average || 0}</p>
+                </div>
+                <div className="flex justify-between mt-4">
+                  <button 
+                    onClick={() => handleEditPlayer(player)}
+                    className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600"
+                  >
+                    Edit
+                  </button>
+                  <button 
+                    onClick={() => handleDeletePlayer(player.id)}
+                    className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* No Players Message */}
+      {players.length === 0 && (
+        <div className="text-center text-gray-500 mt-10">
+          <p className="text-xl">No players found. Start importing players!</p>
         </div>
       )}
     </div>
   );
-};
-
-PlayerList.propTypes = {
-  onSelectPlayer: PropTypes.func,
-  filterByStatus: PropTypes.string,
-  showFilters: PropTypes.bool,
-  title: PropTypes.string,
-  emptyMessage: PropTypes.string,
-  className: PropTypes.string,
-  gridCols: PropTypes.string,
-  limit: PropTypes.number
 };
 
 export default PlayerList;

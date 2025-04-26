@@ -1,20 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import TeamCreationForm from '../components/teams/TeamCreationForm';
-import TeamList from '../components/teams/TeamList';
+import PlayerImportForm from '../components/players/PlayerImportForm';
+import PlayerList from '../components/players/PlayerList';
 
-const TeamsPage = () => {
+const PlayersPage = () => {
   const [activeTab, setActiveTab] = useState('list');
 
   // Tab navigation
   const tabs = [
-    { id: 'list', label: 'Team List' },
-    { id: 'create', label: 'Create Team' }
+    { id: 'list', label: 'Player List' },
+    { id: 'import', label: 'Import Players' }
   ];
 
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold text-gray-800 mb-6">
-        Teams Management
+        Players Management
       </h1>
 
       {/* Tab Navigation */}
@@ -38,11 +38,11 @@ const TeamsPage = () => {
 
       {/* Tab Content */}
       <div>
-        {activeTab === 'list' && <TeamList />}
-        {activeTab === 'create' && <TeamCreationForm />}
+        {activeTab === 'list' && <PlayerList />}
+        {activeTab === 'import' && <PlayerImportForm />}
       </div>
     </div>
   );
 };
 
-export default TeamsPage;
+export default PlayersPage;

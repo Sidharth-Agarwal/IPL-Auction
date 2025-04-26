@@ -1,207 +1,185 @@
-// src/components/auction/BiddingPanel.jsx
 import React, { useState, useEffect } from 'react';
-import PropTypes from 'prop-types';
-import Card from '../common/Card';
-import Button from '../common/Button';
-import { formatCurrency } from '../../utils/formatters';
-import { BID_INCREMENTS } from '../../utils/constants';
+import { auctionService } from '../../services/auctionService';
+import { teamService } from '../../services/teamService';
 
-const BiddingPanel = ({ 
-  minBid, 
-  onPlaceBid, 
-  highestBid, 
-  isHighestBidder = false,
-  disabled = false
-}) => {
-  const [bidAmount, setBidAmount] = useState(minBid);
-  const [quickIncrement, setQuickIncrement] = useState(100);
-  const [loading, setLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState(null);
+const BiddingPanel = ({ currentPlayer, teams, onBidPlaced, onNextPlayer }) => {
+  const [selectedTeam, setSelectedTeam] = useState(null);
+  const [bidAmount, setBidAmount] = useState('');
+  const [currentBids, setCurrentBids] = useState([]);
+  const [error, setError] = useState('');
 
-  // Update bid amount when minBid changes
+  // Fetch current bids when current player changes
   useEffect(() => {
-    setBidAmount(minBid);
-    setErrorMessage(null);
-  }, [minBid]);
-  
-  // Calculate quick increment amounts based on current minBid
-  useEffect(() => {
-    // Find the appropriate increment based on the current min bid
-    for (const { threshold, increment } of BID_INCREMENTS) {
-      if (minBid < threshold) {
-        setQuickIncrement(increment);
-        break;
+    const fetchCurrentBids = async () => {
+      if (currentPlayer) {
+        try {
+          const bids = await auctionService.getBidsForPlayer(
+            currentPlayer.id
+          );
+          setCurrentBids(bids);
+        } catch (error) {
+          console.error('Error fetching bids:', error);
+        }
       }
-    }
-    
-    // If minBid is higher than all thresholds, use the highest increment
-    if (minBid >= BID_INCREMENTS[BID_INCREMENTS.length - 1].threshold) {
-      setQuickIncrement(BID_INCREMENTS[BID_INCREMENTS.length - 1].increment);
-    }
-  }, [minBid]);
+    };
 
-  const handleBidChange = (e) => {
-    const value = parseInt(e.target.value);
-    if (!isNaN(value)) {
-      setBidAmount(value);
-      
-      // Clear error if valid
-      if (value >= minBid) {
-        setErrorMessage(null);
-      } else {
-        setErrorMessage(`Bid must be at least ${formatCurrency(minBid)}`);
-      }
-    }
-  };
+    fetchCurrentBids();
+  }, [currentPlayer]);
 
-  const handleQuickIncrement = (amount) => {
-    const newAmount = bidAmount + amount;
-    setBidAmount(newAmount);
-    setErrorMessage(null);
-  };
+  // Handle bid placement
+  const handlePlaceBid = async () => {
+    // Reset previous errors
+    setError('');
 
-  const handleSubmitBid = async () => {
-    // Validate bid amount
-    if (bidAmount < minBid) {
-      setErrorMessage(`Bid must be at least ${formatCurrency(minBid)}`);
+    // Validate inputs
+    if (!selectedTeam) {
+      setError('Please select a team');
       return;
     }
-    
+
+    const parsedBidAmount = parseFloat(bidAmount);
+    if (isNaN(parsedBidAmount) || parsedBidAmount <= 0) {
+      setError('Please enter a valid bid amount');
+      return;
+    }
+
+    // Check team wallet
+    if (selectedTeam.wallet < parsedBidAmount) {
+      setError('Insufficient team wallet balance');
+      return;
+    }
+
     try {
-      setLoading(true);
-      setErrorMessage(null);
-      
-      await onPlaceBid(bidAmount);
-      
-      // Bidding panel will be updated automatically via subscription
+      // Place bid
+      const newBid = await auctionService.placeBid({
+        teamId: selectedTeam.id,
+        playerId: currentPlayer.id,
+        bidAmount: parsedBidAmount
+      });
+
+      // Update current bids
+      setCurrentBids(prev => [...prev, newBid]);
+
+      // Callback to parent component
+      onBidPlaced(newBid);
+
+      // Reset bid amount
+      setBidAmount('');
     } catch (error) {
-      console.error("Error placing bid:", error);
-      setErrorMessage(error.message || 'Failed to place bid');
-    } finally {
-      setLoading(false);
+      setError('Failed to place bid');
+      console.error('Bid placement error:', error);
     }
   };
 
+  // Determine highest bid
+  const highestBid = currentBids.reduce(
+    (max, bid) => bid.bidAmount > max.bidAmount ? bid : max,
+    { bidAmount: 0 }
+  );
+
   return (
-    <Card title="Place Your Bid">
-      {isHighestBidder ? (
-        <div className="bg-green-50 p-4 mb-4 rounded-md text-center">
-          <p className="text-green-700 font-medium">You are currently the highest bidder!</p>
-          <p className="text-green-600 text-sm">Your bid: {formatCurrency(highestBid?.amount || 0)}</p>
-        </div>
-      ) : disabled && !isHighestBidder ? (
-        <div className="bg-yellow-50 p-4 mb-4 rounded-md text-center">
-          <p className="text-yellow-700 font-medium">
-            {loading ? 'Processing your bid...' : 'You don\'t have enough wallet balance to place a bid.'}
-          </p>
-        </div>
-      ) : null}
-      
-      <div className="space-y-4 p-4">
-        {/* Bid Input */}
-        <div>
-          <label htmlFor="bidAmount" className="block text-sm font-medium text-gray-700 mb-1">
-            Your Bid Amount (min: {formatCurrency(minBid)})
-          </label>
-          <div className="mt-1 relative rounded-md shadow-sm">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <span className="text-gray-500 sm:text-sm">$</span>
-            </div>
-            <input
-              type="number"
-              name="bidAmount"
-              id="bidAmount"
-              className={`focus:ring-blue-500 focus:border-blue-500 block w-full pl-7 pr-12 sm:text-sm border-gray-300 rounded-md
-                ${errorMessage ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
-              placeholder="0"
-              value={bidAmount}
-              onChange={handleBidChange}
-              min={minBid}
-              step="100"
-              disabled={disabled || isHighestBidder || loading}
-            />
-          </div>
-          {errorMessage && (
-            <p className="mt-1 text-sm text-red-600">{errorMessage}</p>
-          )}
-        </div>
-        
-        {/* Quick Increment Buttons */}
-        <div className="grid grid-cols-3 gap-2">
-          <Button
-            variant="secondary"
-            onClick={() => handleQuickIncrement(quickIncrement)}
-            disabled={disabled || isHighestBidder || loading}
-            size="sm"
-          >
-            +{formatCurrency(quickIncrement, '')}
-          </Button>
-          
-          <Button
-            variant="secondary"
-            onClick={() => handleQuickIncrement(quickIncrement * 2)}
-            disabled={disabled || isHighestBidder || loading}
-            size="sm"
-          >
-            +{formatCurrency(quickIncrement * 2, '')}
-          </Button>
-          
-          <Button
-            variant="secondary"
-            onClick={() => handleQuickIncrement(quickIncrement * 5)}
-            disabled={disabled || isHighestBidder || loading}
-            size="sm"
-          >
-            +{formatCurrency(quickIncrement * 5, '')}
-          </Button>
-        </div>
-        
-        {/* Place Bid Button */}
-        <Button
-          variant="primary"
-          onClick={handleSubmitBid}
-          disabled={disabled || isHighestBidder || loading || bidAmount < minBid}
-          loading={loading}
-          loadingText="Placing Bid..."
-          fullWidth
-          icon={
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          }
+    <div className="bidding-panel bg-white shadow-md rounded-lg p-6">
+      <h2 className="text-xl font-bold mb-4">
+        Bidding for {currentPlayer?.name}
+      </h2>
+
+      {/* Team Selection */}
+      <div className="mb-4">
+        <label 
+          htmlFor="team-select" 
+          className="block text-sm font-medium text-gray-700 mb-2"
         >
-          Place Bid
-        </Button>
-        
-        {/* Current High Bid */}
-        {highestBid && (
-          <div className="pt-4 mt-2 border-t border-gray-200">
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-500">Current highest bid:</span>
-              <span className="font-semibold text-green-700">{formatCurrency(highestBid.amount)}</span>
-            </div>
-            <div className="flex justify-between text-sm mt-1">
-              <span className="text-gray-500">Required increment:</span>
-              <span className="font-semibold">{formatCurrency(quickIncrement)}</span>
-            </div>
-          </div>
+          Select Team
+        </label>
+        <select
+          id="team-select"
+          value={selectedTeam?.id || ''}
+          onChange={(e) => {
+            const team = teams.find(t => t.id === e.target.value);
+            setSelectedTeam(team);
+          }}
+          className="w-full px-3 py-2 border rounded-md"
+        >
+          <option value="">Choose a Team</option>
+          {teams.map(team => (
+            <option key={team.id} value={team.id}>
+              {team.name} (Wallet: {team.wallet})
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* Bid Input */}
+      <div className="mb-4">
+        <label 
+          htmlFor="bid-amount" 
+          className="block text-sm font-medium text-gray-700 mb-2"
+        >
+          Bid Amount
+        </label>
+        <input
+          id="bid-amount"
+          type="number"
+          value={bidAmount}
+          onChange={(e) => setBidAmount(e.target.value)}
+          placeholder="Enter bid amount"
+          className="w-full px-3 py-2 border rounded-md"
+          disabled={!selectedTeam}
+        />
+      </div>
+
+      {/* Error Message */}
+      {error && (
+        <div className="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded">
+          {error}
+        </div>
+      )}
+
+      {/* Bid Button */}
+      <button
+        onClick={handlePlaceBid}
+        disabled={!selectedTeam || !bidAmount}
+        className="w-full bg-blue-500 text-white py-2 rounded-md hover:bg-blue-600 transition duration-300 mb-4"
+      >
+        Place Bid
+      </button>
+
+      {/* Current Bids */}
+      <div className="current-bids">
+        <h3 className="text-lg font-semibold mb-2">Current Bids</h3>
+        {currentBids.length === 0 ? (
+          <p className="text-gray-500">No bids yet</p>
+        ) : (
+          <ul className="space-y-2">
+            {currentBids.map(bid => {
+              const bidderTeam = teams.find(t => t.id === bid.teamId);
+              return (
+                <li 
+                  key={bid.id} 
+                  className={`flex justify-between p-2 rounded ${
+                    bid.id === highestBid.id 
+                      ? 'bg-green-100' 
+                      : 'bg-gray-100'
+                  }`}
+                >
+                  <span>{bidderTeam?.name}</span>
+                  <span>{bid.bidAmount}</span>
+                </li>
+              );
+            })}
+          </ul>
         )}
       </div>
-    </Card>
-  );
-};
 
-BiddingPanel.propTypes = {
-  minBid: PropTypes.number.isRequired,
-  onPlaceBid: PropTypes.func.isRequired,
-  highestBid: PropTypes.shape({
-    id: PropTypes.string,
-    teamId: PropTypes.string,
-    amount: PropTypes.number,
-    timestamp: PropTypes.any
-  }),
-  isHighestBidder: PropTypes.bool,
-  disabled: PropTypes.bool
+      {/* Next Player Button */}
+      <button
+        onClick={onNextPlayer}
+        className="w-full mt-4 bg-green-500 text-white py-2 rounded-md hover:bg-green-600 transition duration-300"
+      >
+        Move to Next Player
+      </button>
+    </div>
+  );
 };
 
 export default BiddingPanel;

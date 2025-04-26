@@ -1,249 +1,335 @@
-// src/pages/AuctionPage.jsx
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import MainLayout from '../layouts/MainLayout';
-import AuctionRoom from '../components/auction/AuctionRoom';
-import TeamList from '../components/teams/TeamList';
-import Card from '../components/common/Card';
-import Button from '../components/common/Button';
-import Loading from '../components/common/Loading';
-import ErrorMessage from '../components/common/ErrorMessage';
-import { getAuctionSettings } from '../services/auctionService';
-import { formatDate } from '../utils/formatters';
-import { useNotification } from '../context/NotificationContext';
+import { playerService } from '../services/playerService';
+import { teamService } from '../services/teamService';
+import { auctionService } from '../services/auctionService';
+import AuctionDashboard from '../components/auction/AuctionDashboard';
 
 const AuctionPage = () => {
-  const { teamId } = useParams();
-  const navigate = useNavigate();
-  const { showInfo, showError } = useNotification();
-  
-  const [selectedTeamId, setSelectedTeamId] = useState(teamId || null);
-  const [auctionDate, setAuctionDate] = useState(null);
-  const [auctionActive, setAuctionActive] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  
-  // Load auction settings when page loads
+  const [players, setPlayers] = useState([]);
+  const [teams, setTeams] = useState([]);
+  const [currentPlayer, setCurrentPlayer] = useState(null);
+  const [currentBids, setCurrentBids] = useState([]);
+  const [auctionStatus, setAuctionStatus] = useState('not_started');
+  const [selectedTeam, setSelectedTeam] = useState(null);
+  const [bidAmount, setBidAmount] = useState('');
+  const [activeView, setActiveView] = useState('dashboard');
+  const [error, setError] = useState('');
+
+  // Fetch initial data
   useEffect(() => {
-    const fetchAuctionSettings = async () => {
+    const fetchInitialData = async () => {
       try {
-        setLoading(true);
-        setError(null);
-        
-        const settings = await getAuctionSettings().catch(err => {
-          console.error('Error fetching auction settings:', err);
-          return null;
-        });
-        
-        if (settings) {
-          // Handle auction date
-          if (settings.auctionDate) {
-            const date = settings.auctionDate.toDate ? 
-                        settings.auctionDate.toDate() : 
-                        new Date(settings.auctionDate);
-            setAuctionDate(date);
-          }
-          
-          // Set current auction status
-          setAuctionActive(settings.isActive || false);
-        }
-        
-        setLoading(false);
-      } catch (err) {
-        console.error('Error fetching auction settings:', err);
-        setError('Failed to load auction information. Please try again.');
-        setLoading(false);
+        const fetchedPlayers = await playerService.getAllPlayers();
+        const fetchedTeams = await teamService.getAllTeams();
+
+        // Filter available players
+        const availablePlayers = fetchedPlayers.filter(
+          player => player.status === 'available'
+        );
+
+        setPlayers(availablePlayers);
+        setTeams(fetchedTeams);
+      } catch (error) {
+        setError('Failed to fetch initial auction data');
+        console.error(error);
       }
     };
-    
-    fetchAuctionSettings();
+
+    fetchInitialData();
   }, []);
 
-  // Set team ID from URL params if provided
-  useEffect(() => {
-    if (teamId) {
-      setSelectedTeamId(teamId);
+  // Start auction
+  const startAuction = () => {
+    if (players.length === 0) {
+      setError('No players available for auction');
+      return;
     }
-  }, [teamId]);
 
-  // Handle team selection
-  const handleSelectTeam = (team) => {
-    setSelectedTeamId(team.id);
-    navigate(`/auction/${team.id}`);
-    showInfo(`You've selected ${team.name} for the auction`);
+    // Set first player
+    const firstPlayer = players[0];
+    setCurrentPlayer(firstPlayer);
+    setAuctionStatus('active');
+    setActiveView('auction');
   };
 
-  // Handle change team
-  const handleChangeTeam = () => {
-    setSelectedTeamId(null);
-    navigate('/auction');
+  // Place bid
+  const placeBid = () => {
+    // Validate inputs
+    if (!selectedTeam) {
+      setError('Please select a team');
+      return;
+    }
+
+    const parsedBidAmount = parseFloat(bidAmount);
+    if (isNaN(parsedBidAmount) || parsedBidAmount <= 0) {
+      setError('Please enter a valid bid amount');
+      return;
+    }
+
+    // Check team wallet
+    if (selectedTeam.wallet < parsedBidAmount) {
+      setError('Insufficient team wallet balance');
+      return;
+    }
+
+    // Create new bid
+    const newBid = {
+      teamId: selectedTeam.id,
+      teamName: selectedTeam.name,
+      bidAmount: parsedBidAmount,
+      timestamp: new Date()
+    };
+
+    // Update current bids
+    setCurrentBids(prev => [...prev, newBid]);
+
+    // Clear bid input
+    setBidAmount('');
+    setError('');
   };
 
-  // Check if auction date is in the past
-  const isAuctionPast = auctionDate && new Date() > auctionDate;
-  
-  // Check if auction date is today
-  const isAuctionToday = auctionDate && (
-    new Date().toDateString() === auctionDate.toDateString()
-  );
-
-  if (loading) {
-    return (
-      <MainLayout>
-        <Loading text="Loading auction information..." />
-      </MainLayout>
+  // Move to next player
+  const moveToNextPlayer = async () => {
+    // Determine the winner of the current player
+    const highestBid = currentBids.reduce(
+      (max, bid) => bid.bidAmount > max.bidAmount ? bid : max,
+      { bidAmount: 0, teamId: null }
     );
-  }
 
-  if (error) {
-    return (
-      <MainLayout>
-        <ErrorMessage message={error} />
-      </MainLayout>
-    );
-  }
+    try {
+      if (highestBid.teamId) {
+        // Update player as sold
+        await playerService.updatePlayer(currentPlayer.id, {
+          status: 'sold',
+          soldTo: highestBid.teamId
+        });
+
+        // Update winning team's wallet and players
+        const winningTeam = teams.find(t => t.id === highestBid.teamId);
+        await teamService.updateTeam(highestBid.teamId, {
+          wallet: winningTeam.wallet - highestBid.bidAmount,
+          players: [...(winningTeam.players || []), currentPlayer.id]
+        });
+      } else {
+        // Mark player as unsold
+        await playerService.updatePlayer(currentPlayer.id, {
+          status: 'unsold'
+        });
+      }
+
+      // Find next available player
+      const remainingPlayers = players.filter(p => p.status === 'available');
+      
+      if (remainingPlayers.length > 0) {
+        const nextPlayer = remainingPlayers[0];
+        setCurrentPlayer(nextPlayer);
+        setCurrentBids([]);
+        setSelectedTeam(null);
+      } else {
+        // Auction completed
+        setAuctionStatus('completed');
+      }
+    } catch (error) {
+      setError('Failed to process player auction');
+      console.error(error);
+    }
+  };
+
+  // Navigation tabs
+  const tabs = [
+    { 
+      id: 'dashboard', 
+      label: 'Auction Dashboard', 
+      icon: '📊'
+    },
+    { 
+      id: 'auction', 
+      label: 'Auction Room', 
+      icon: '🔨'
+    }
+  ];
 
   return (
-    <MainLayout>
-      {!selectedTeamId ? (
-        // Team Selection Screen
-        <div className="space-y-6">
-          <Card
-            title="Live Cricket Auction"
-            titleVariant="primary"
-          >
-            <div className="p-6">
-              <h2 className="text-xl font-semibold mb-4">Select Your Team</h2>
-              <p className="text-gray-600 mb-6">
-                Choose the team you want to represent during the auction. You will be able to place bids
-                and manage your team's wallet.
-              </p>
-              
-              {/* Auction Status */}
-              {auctionActive ? (
-                <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-                  <div className="flex items-center">
-                    <div className="h-3 w-3 bg-green-500 rounded-full mr-2 animate-pulse"></div>
-                    <p className="text-green-700 font-medium">
-                      Auction is LIVE! Select a team to join now.
-                    </p>
-                  </div>
-                </div>
-              ) : auctionDate && (
-                <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                  <p className="text-blue-700 font-medium">
-                    {isAuctionPast 
-                      ? 'The auction has already taken place.' 
-                      : isAuctionToday 
-                        ? 'Auction scheduled for today: ' 
-                        : 'Auction scheduled for: '}
-                    {!isAuctionPast && (
-                      <span className="font-bold">
-                        {formatDate(auctionDate, {
-                          weekday: 'long',
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
-                      </span>
-                    )}
-                  </p>
-                  
-                  {isAuctionPast && (
-                    <div className="mt-2">
-                      <Button
-                        variant="primary"
-                        size="sm"
-                        onClick={() => navigate('/results')}
-                      >
-                        View Auction Results
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </Card>
-          
-          <TeamList 
-            onSelectTeam={handleSelectTeam} 
-            showCreateButton={false}
-            emptyMessage="No teams available. Please create teams in the Admin Panel."
-          />
-        </div>
-      ) : (
-        // Auction Room
-        <div className="space-y-6">
-          <div className="flex justify-between items-center">
-            <h1 className="text-2xl font-bold text-gray-800">Live Auction Room</h1>
-            <Button
-              variant="outline"
-              onClick={handleChangeTeam}
-              icon={
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                </svg>
+    <div className="container mx-auto px-4 py-8">
+      <h1 className="text-3xl font-bold text-gray-800 mb-6">
+        Auction Management
+      </h1>
+
+      {/* Tab Navigation */}
+      <div className="mb-6 border-b border-gray-200 flex space-x-4">
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveView(tab.id)}
+            className={`
+              py-2 px-4 flex items-center space-x-2 border-b-2 font-medium text-sm
+              ${activeView === tab.id
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }
-            >
-              Change Team
-            </Button>
-          </div>
-          
-          {auctionActive ? (
-            <AuctionRoom teamId={selectedTeamId} />
-          ) : (
-            <Card>
-              <div className="p-6 text-center">
-                <svg 
-                  className="mx-auto h-16 w-16 text-gray-400" 
-                  fill="none" 
-                  viewBox="0 0 24 24" 
-                  stroke="currentColor"
-                >
-                  <path 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round" 
-                    strokeWidth="2" 
-                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" 
-                  />
-                </svg>
-                <h3 className="mt-4 text-lg font-medium text-gray-900">
-                  {isAuctionPast ? 'Auction has ended' : 'Auction not active yet'}
-                </h3>
-                
-                <p className="mt-2 text-gray-600">
-                  {isAuctionPast 
-                    ? 'The auction has already taken place. You can view the results.' 
-                    : auctionDate 
-                      ? `The auction is scheduled for ${formatDate(auctionDate)}. Please check back then.`
-                      : 'Please wait for the auction to be started by the administrator.'}
-                </p>
-                
-                <div className="mt-6">
-                  {isAuctionPast ? (
-                    <Button
-                      variant="primary"
-                      onClick={() => navigate('/results')}
-                    >
-                      View Auction Results
-                    </Button>
-                  ) : (
-                    <Button
-                      variant="outline"
-                      onClick={handleChangeTeam}
-                    >
-                      Change Team
-                    </Button>
+            `}
+          >
+            <span className="text-lg">{tab.icon}</span>
+            <span>{tab.label}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Dynamic Content */}
+      {activeView === 'dashboard' && <AuctionDashboard />}
+
+      {/* Auction Room */}
+      {activeView === 'auction' && (
+        <div>
+          {/* Error Message */}
+          {error && (
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
+              {error}
+            </div>
+          )}
+
+          {/* Auction Status Control */}
+          {auctionStatus === 'not_started' && (
+            <div className="text-center mb-8">
+              <button 
+                onClick={startAuction}
+                className="bg-green-500 text-white px-6 py-3 rounded-lg text-xl hover:bg-green-600 transition duration-300"
+              >
+                Start Auction
+              </button>
+            </div>
+          )}
+
+          {/* Active Auction */}
+          {auctionStatus === 'active' && currentPlayer && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Current Player Details */}
+              <div className="bg-white shadow-md rounded-lg p-6">
+                <h2 className="text-2xl font-bold mb-4">
+                  Current Player: {currentPlayer.name}
+                </h2>
+                <div className="space-y-2">
+                  <p><strong>Category:</strong> {currentPlayer.category}</p>
+                  <p><strong>Base Price:</strong> ₹{currentPlayer.basePrice}</p>
+                  {currentPlayer.imageUrl && (
+                    <img 
+                      src={currentPlayer.imageUrl} 
+                      alt={currentPlayer.name} 
+                      className="w-48 h-48 object-cover rounded-lg mt-4"
+                    />
                   )}
                 </div>
               </div>
-            </Card>
+
+              {/* Bidding Panel */}
+              <div className="bg-white shadow-md rounded-lg p-6">
+                <h3 className="text-xl font-semibold mb-4">Bidding Panel</h3>
+                
+                {/* Team Selection */}
+                <div className="mb-4">
+                  <label 
+                    htmlFor="team-select" 
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
+                    Select Team
+                  </label>
+                  <select
+                    id="team-select"
+                    value={selectedTeam?.id || ''}
+                    onChange={(e) => {
+                      const team = teams.find(t => t.id === e.target.value);
+                      setSelectedTeam(team);
+                    }}
+                    className="w-full px-3 py-2 border rounded-md"
+                  >
+                    <option value="">Choose a Team</option>
+                    {teams.map(team => (
+                      <option key={team.id} value={team.id}>
+                        {team.name} (Wallet: ₹{team.wallet})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Bid Amount Input */}
+                <div className="mb-4">
+                  <label 
+                    htmlFor="bid-amount" 
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
+                    Bid Amount
+                  </label>
+                  <input
+                    id="bid-amount"
+                    type="number"
+                    value={bidAmount}
+                    onChange={(e) => setBidAmount(e.target.value)}
+                    placeholder="Enter bid amount"
+                    disabled={!selectedTeam}
+                    className="w-full px-3 py-2 border rounded-md"
+                  />
+                </div>
+
+                {/* Bid Button */}
+                <button
+                  onClick={placeBid}
+                  disabled={!selectedTeam || !bidAmount}
+                  className="w-full bg-blue-500 text-white py-2 rounded-md hover:bg-blue-600 transition duration-300 mb-4"
+                >
+                  Place Bid
+                </button>
+
+                {/* Current Bids */}
+                <div>
+                  <h4 className="text-lg font-semibold mb-2">Current Bids</h4>
+                  {currentBids.length === 0 ? (
+                    <p className="text-gray-500">No bids yet</p>
+                  ) : (
+                    <ul className="space-y-2">
+                      {currentBids.map((bid, index) => (
+                        <li 
+                          key={index} 
+                          className="flex justify-between p-2 bg-gray-100 rounded"
+                        >
+                          <span>{bid.teamName}</span>
+                          <span>₹{bid.bidAmount}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+
+                {/* Next Player Button */}
+                <button
+                  onClick={moveToNextPlayer}
+                  className="w-full mt-4 bg-green-500 text-white py-2 rounded-md hover:bg-green-600 transition duration-300"
+                >
+                  Move to Next Player
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Auction Completed */}
+          {auctionStatus === 'completed' && (
+            <div className="text-center py-12 bg-white shadow-md rounded-lg">
+              <h2 className="text-3xl font-bold text-green-600 mb-4">
+                Auction Completed
+              </h2>
+              <p className="text-gray-600 mb-6">
+                All players have been auctioned.
+              </p>
+              <button
+                onClick={() => setActiveView('dashboard')}
+                className="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 transition duration-300"
+              >
+                View Auction Dashboard
+              </button>
+            </div>
           )}
         </div>
       )}
-    </MainLayout>
+    </div>
   );
 };
 
