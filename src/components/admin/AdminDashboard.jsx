@@ -1,12 +1,17 @@
-// src/components/admin/AdminPanel.js
+// src/components/admin/AdminDashboard.jsx
 import React, { useState, useEffect } from 'react';
 import { getAllTeams } from '../../services/teamService';
 import { getAllPlayers, getPlayersByStatus } from '../../services/playerService';
 import { getAuctionSettings } from '../../services/auctionService';
 import Card from '../common/Card';
 import Button from '../common/Button';
+import Loading from '../common/Loading';
+import ErrorMessage from '../common/ErrorMessage';
+import { formatCurrency } from '../../utils/formatters';
+import { PLAYER_STATUS } from '../../utils/constants';
+import { useNotification } from '../../context/NotificationContext';
 
-const AdminPanel = () => {
+const AdminDashboard = ({ onActionClick }) => {
   const [teamStats, setTeamStats] = useState({
     total: 0,
     totalWallet: 0
@@ -19,29 +24,45 @@ const AdminPanel = () => {
   });
   const [auctionStatus, setAuctionStatus] = useState({
     isActive: false,
-    currentPlayer: null
+    currentPlayer: null,
+    auctionDate: null
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const { showError } = useNotification();
 
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
+        setError(null);
         
-        // Fetch teams data
-        const teams = await getAllTeams();
-        const totalWallet = teams.reduce((sum, team) => sum + team.wallet, 0);
-        setTeamStats({
-          total: teams.length,
-          totalWallet
-        });
+        // Use Promise.allSettled to prevent one failure from affecting others
+        const [teamsResult, allPlayersResult, availablePlayersResult, 
+               soldPlayersResult, unsoldPlayersResult, settingsResult] = await Promise.allSettled([
+          getAllTeams(),
+          getAllPlayers(),
+          getPlayersByStatus(PLAYER_STATUS.AVAILABLE),
+          getPlayersByStatus(PLAYER_STATUS.SOLD),
+          getPlayersByStatus(PLAYER_STATUS.UNSOLD),
+          getAuctionSettings()
+        ]);
         
-        // Fetch player stats
-        const allPlayers = await getAllPlayers();
-        const availablePlayers = await getPlayersByStatus('available');
-        const soldPlayers = await getPlayersByStatus('sold');
-        const unsoldPlayers = await getPlayersByStatus('unsold');
+        // Process team stats
+        if (teamsResult.status === 'fulfilled') {
+          const teams = teamsResult.value || [];
+          const totalWallet = teams.reduce((sum, team) => sum + (team.wallet || 0), 0);
+          setTeamStats({
+            total: teams.length,
+            totalWallet
+          });
+        }
+        
+        // Process player stats
+        const allPlayers = allPlayersResult.status === 'fulfilled' ? allPlayersResult.value || [] : [];
+        const availablePlayers = availablePlayersResult.status === 'fulfilled' ? availablePlayersResult.value || [] : [];
+        const soldPlayers = soldPlayersResult.status === 'fulfilled' ? soldPlayersResult.value || [] : [];
+        const unsoldPlayers = unsoldPlayersResult.status === 'fulfilled' ? unsoldPlayersResult.value || [] : [];
         
         setPlayerStats({
           total: allPlayers.length,
@@ -50,38 +71,46 @@ const AdminPanel = () => {
           unsold: unsoldPlayers.length
         });
         
-        // Fetch auction status
-        const settings = await getAuctionSettings();
-        setAuctionStatus({
-          isActive: settings?.isActive || false,
-          currentPlayer: settings?.currentPlayerId || null
-        });
+        // Process auction settings
+        if (settingsResult.status === 'fulfilled') {
+          const settings = settingsResult.value || {};
+          setAuctionStatus({
+            isActive: settings.isActive || false,
+            currentPlayer: settings.currentPlayerId || null,
+            auctionDate: settings.auctionDate || null
+          });
+        }
+        
+        // Check if any requests failed
+        const failedRequests = [teamsResult, allPlayersResult, availablePlayersResult, 
+                               soldPlayersResult, unsoldPlayersResult, settingsResult]
+                               .filter(result => result.status === 'rejected');
+        
+        if (failedRequests.length > 0) {
+          console.warn('Some dashboard data could not be loaded', 
+            failedRequests.map(result => result.reason));
+          
+          // Don't set error since we have at least some data
+        }
         
         setLoading(false);
       } catch (err) {
         console.error('Error fetching dashboard data:', err);
-        setError('Failed to load dashboard data');
+        setError('Failed to load dashboard data. Please try again.');
+        showError('Failed to load dashboard data');
         setLoading(false);
       }
     };
     
     fetchDashboardData();
-  }, []);
+  }, [showError]);
   
   if (loading) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-      </div>
-    );
+    return <Loading text="Loading dashboard data..." />;
   }
   
   if (error) {
-    return (
-      <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-md">
-        <p>{error}</p>
-      </div>
-    );
+    return <ErrorMessage message={error} />;
   }
 
   return (
@@ -89,7 +118,11 @@ const AdminPanel = () => {
       {/* Overview Section */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {/* Teams Card */}
-        <Card className="bg-blue-50">
+        <Card 
+          background="blue" 
+          elevation="md"
+          className="transition-transform hover:scale-105"
+        >
           <div className="p-6">
             <div className="flex items-center">
               <div className="p-3 rounded-full bg-blue-200 text-blue-800 mr-4">
@@ -113,7 +146,11 @@ const AdminPanel = () => {
         </Card>
         
         {/* Players Card */}
-        <Card className="bg-green-50">
+        <Card 
+          background="green" 
+          elevation="md"
+          className="transition-transform hover:scale-105"
+        >
           <div className="p-6">
             <div className="flex items-center">
               <div className="p-3 rounded-full bg-green-200 text-green-800 mr-4">
@@ -139,7 +176,11 @@ const AdminPanel = () => {
         </Card>
         
         {/* Total Budget Card */}
-        <Card className="bg-yellow-50">
+        <Card 
+          background="yellow" 
+          elevation="md"
+          className="transition-transform hover:scale-105"
+        >
           <div className="p-6">
             <div className="flex items-center">
               <div className="p-3 rounded-full bg-yellow-200 text-yellow-800 mr-4">
@@ -158,14 +199,18 @@ const AdminPanel = () => {
               </div>
               <div>
                 <p className="text-yellow-800 text-sm font-medium">Total Budget</p>
-                <p className="text-yellow-900 text-2xl font-bold">${teamStats.totalWallet.toLocaleString()}</p>
+                <p className="text-yellow-900 text-2xl font-bold">{formatCurrency(teamStats.totalWallet)}</p>
               </div>
             </div>
           </div>
         </Card>
         
         {/* Auction Status Card */}
-        <Card className={auctionStatus.isActive ? "bg-green-50" : "bg-red-50"}>
+        <Card 
+          background={auctionStatus.isActive ? "green" : "red"}
+          elevation="md"
+          className="transition-transform hover:scale-105"
+        >
           <div className="p-6">
             <div className="flex items-center">
               <div className={`p-3 rounded-full ${auctionStatus.isActive ? "bg-green-200 text-green-800" : "bg-red-200 text-red-800"} mr-4`}>
@@ -238,19 +283,34 @@ const AdminPanel = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Button 
               variant="primary" 
-              onClick={() => window.location.href = '/admin?tab=teams'}
+              onClick={() => onActionClick && onActionClick('teams')}
+              icon={
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+              }
             >
               Add New Team
             </Button>
             <Button 
               variant="secondary" 
-              onClick={() => window.location.href = '/admin?tab=players'}
+              onClick={() => onActionClick && onActionClick('players')}
+              icon={
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                </svg>
+              }
             >
               Import Players
             </Button>
             <Button 
               variant="success" 
-              onClick={() => window.location.href = '/admin?tab=auction'}
+              onClick={() => onActionClick && onActionClick('auction')}
+              icon={
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              }
             >
               Manage Auction
             </Button>
@@ -261,4 +321,4 @@ const AdminPanel = () => {
   );
 };
 
-export default AdminPanel;
+export default AdminDashboard;

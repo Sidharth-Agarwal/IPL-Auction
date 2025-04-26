@@ -1,8 +1,13 @@
-// src/components/auction/PlayerDisplay.js
+// src/components/auction/PlayerDisplay.jsx
 import React from 'react';
+import PropTypes from 'prop-types';
 import Card from '../common/Card';
+import { formatCurrency } from '../../utils/formatters';
+import { ROLE_COLORS } from '../../utils/constants';
 
 const PlayerDisplay = ({ player, highestBid }) => {
+  if (!player) return null;
+  
   // Helper function to format player stats
   const formatStats = (stats) => {
     if (!stats || Object.keys(stats).length === 0) {
@@ -30,20 +35,28 @@ const PlayerDisplay = ({ player, highestBid }) => {
   };
   
   const playerStats = formatStats(player.stats);
+  const roleColor = ROLE_COLORS[player.role] || ROLE_COLORS.default;
+  
+  // Countdown timer for bidding - to be implemented
+  const renderBiddingTimer = () => {
+    // In a future version, we could implement a countdown timer here
+    return null;
+  };
   
   return (
     <Card className="overflow-hidden">
+      {/* Header with player name and current bid */}
       <div className="bg-gradient-to-r from-blue-700 to-blue-900 text-white p-4 flex justify-between items-center">
         <h2 className="text-2xl font-bold">{player.name}</h2>
         {highestBid ? (
           <div className="text-right">
             <p className="text-sm text-blue-200">Current Highest Bid</p>
-            <p className="text-2xl font-bold">${highestBid.amount.toLocaleString()}</p>
+            <p className="text-2xl font-bold">{formatCurrency(highestBid.amount)}</p>
           </div>
         ) : (
           <div className="text-right">
             <p className="text-sm text-blue-200">Base Price</p>
-            <p className="text-xl font-bold">${player.basePrice.toLocaleString()}</p>
+            <p className="text-xl font-bold">{formatCurrency(player.basePrice)}</p>
           </div>
         )}
       </div>
@@ -58,6 +71,10 @@ const PlayerDisplay = ({ player, highestBid }) => {
                   src={player.image} 
                   alt={player.name} 
                   className="w-full h-full object-cover"
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.src = '/assets/images/player-placeholder.png';
+                  }}
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
@@ -68,30 +85,32 @@ const PlayerDisplay = ({ player, highestBid }) => {
               )}
             </div>
             
-            <div className="space-y-2 mb-4">
-              {/* Role */}
-              <div className="flex justify-between">
-                <span className="text-gray-600">Role:</span>
-                <span className="font-medium">{player.role || 'N/A'}</span>
-              </div>
+            <div className="space-y-4">
+              {/* Role Badge */}
+              {player.role && (
+                <div className="flex justify-center">
+                  <span className={`px-4 py-1 rounded-full text-sm font-medium ${roleColor.bg} ${roleColor.text}`}>
+                    {player.role}
+                  </span>
+                </div>
+              )}
               
-              {/* Batting Style */}
-              <div className="flex justify-between">
-                <span className="text-gray-600">Batting:</span>
-                <span className="font-medium">{player.battingStyle || 'N/A'}</span>
-              </div>
-              
-              {/* Bowling Style */}
-              <div className="flex justify-between">
-                <span className="text-gray-600">Bowling:</span>
-                <span className="font-medium">{player.bowlingStyle || 'N/A'}</span>
-              </div>
-            </div>
-            
-            {/* Status Badge */}
-            <div className="mt-4">
-              <div className="inline-flex rounded-full px-3 py-1 text-sm font-semibold bg-blue-100 text-blue-800">
-                Base Price: ${player.basePrice.toLocaleString()}
+              {/* Player Details */}
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Batting:</span>
+                  <span className="font-medium">{player.battingStyle || 'N/A'}</span>
+                </div>
+                
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Bowling:</span>
+                  <span className="font-medium">{player.bowlingStyle || 'N/A'}</span>
+                </div>
+                
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Base Price:</span>
+                  <span className="font-medium text-green-600">{formatCurrency(player.basePrice)}</span>
+                </div>
               </div>
             </div>
           </div>
@@ -117,30 +136,32 @@ const PlayerDisplay = ({ player, highestBid }) => {
             
             {/* Bidding Status */}
             <div className="mt-6 pt-6 border-t border-gray-200">
-              <h3 className="text-lg font-semibold mb-3">Bidding Status</h3>
+              <div className="flex justify-between items-center">
+                <h3 className="text-lg font-semibold">Bidding Status</h3>
+                {renderBiddingTimer()}
+              </div>
               
               {highestBid ? (
-                <div className="bg-green-50 p-4 rounded-lg">
+                <div className="bg-green-50 p-4 rounded-lg mt-3">
                   <div className="flex justify-between items-center">
                     <div>
                       <p className="text-sm text-green-600">Current Highest Bid</p>
                       <p className="text-2xl font-bold text-green-700">
-                        ${highestBid.amount.toLocaleString()}
+                        {formatCurrency(highestBid.amount)}
                       </p>
                     </div>
                     <div className="text-right">
                       <p className="text-sm text-green-600">Team</p>
                       <p className="text-lg font-medium text-green-700">
-                        {/* Ideally, we would show the team name here */}
-                        Team {highestBid.teamId.substring(0, 5)}...
+                        {highestBid.teamName || `Team ${highestBid.teamId.substring(0, 5)}...`}
                       </p>
                     </div>
                   </div>
                 </div>
               ) : (
-                <div className="bg-yellow-50 p-4 rounded-lg">
+                <div className="bg-yellow-50 p-4 rounded-lg mt-3">
                   <p className="text-center text-yellow-700">
-                    No bids yet. Starting price is ${player.basePrice.toLocaleString()}
+                    No bids yet. Starting price is {formatCurrency(player.basePrice)}
                   </p>
                 </div>
               )}
@@ -150,6 +171,26 @@ const PlayerDisplay = ({ player, highestBid }) => {
       </div>
     </Card>
   );
+};
+
+PlayerDisplay.propTypes = {
+  player: PropTypes.shape({
+    id: PropTypes.string,
+    name: PropTypes.string.isRequired,
+    role: PropTypes.string,
+    battingStyle: PropTypes.string,
+    bowlingStyle: PropTypes.string,
+    basePrice: PropTypes.number,
+    image: PropTypes.string,
+    stats: PropTypes.object
+  }).isRequired,
+  highestBid: PropTypes.shape({
+    id: PropTypes.string,
+    teamId: PropTypes.string,
+    teamName: PropTypes.string,
+    amount: PropTypes.number,
+    timestamp: PropTypes.any
+  })
 };
 
 export default PlayerDisplay;

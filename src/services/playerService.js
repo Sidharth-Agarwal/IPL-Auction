@@ -69,13 +69,45 @@ export const getAllPlayers = async () => {
     }));
   } catch (error) {
     console.error("Error getting players:", error);
-    throw error;
+    return []; // Return empty array instead of throwing to prevent UI errors
   }
 };
 
-// Get players by status
+// Get players by status - UPDATED to handle index requirement
 export const getPlayersByStatus = async (status) => {
   try {
+    // Try using just the where clause without orderBy to avoid requiring the index
+    const q = query(
+      playersCollection, 
+      where("status", "==", status)
+      // orderBy removed to avoid requiring a composite index
+    );
+    
+    const querySnapshot = await getDocs(q);
+    const players = querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+    
+    // Sort locally instead if needed
+    players.sort((a, b) => {
+      if (a.createdAt && b.createdAt) {
+        return a.createdAt.seconds - b.createdAt.seconds;
+      }
+      return 0;
+    });
+    
+    return players;
+  } catch (error) {
+    console.error("Error getting players by status:", error);
+    return []; // Return empty array instead of throwing to prevent UI errors
+  }
+};
+
+// Alternative implementation with proper error handling and instructions for index creation
+export const getPlayersByStatusWithIndex = async (status) => {
+  try {
+    // This query requires a composite index on Firestore
     const q = query(
       playersCollection, 
       where("status", "==", status),
@@ -89,7 +121,13 @@ export const getPlayersByStatus = async (status) => {
     }));
   } catch (error) {
     console.error("Error getting players by status:", error);
-    throw error;
+    
+    // Handle the specific index error and provide clearer instructions
+    if (error.code === 'failed-precondition' && error.message.includes('requires an index')) {
+      console.info('This query requires a Firestore index. Please create the index by visiting the URL in the error message above.');
+    }
+    
+    return []; // Return empty array instead of throwing to prevent UI errors
   }
 };
 
@@ -102,11 +140,12 @@ export const getPlayer = async (playerId) => {
     if (docSnap.exists()) {
       return { id: docSnap.id, ...docSnap.data() };
     } else {
-      throw new Error("Player not found");
+      console.warn(`Player with ID ${playerId} not found`);
+      return null;
     }
   } catch (error) {
     console.error("Error getting player:", error);
-    throw error;
+    return null; // Return null instead of throwing
   }
 };
 
