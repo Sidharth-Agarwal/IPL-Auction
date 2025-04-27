@@ -29,16 +29,22 @@ const PlayerCard = ({ player, onClick }) => {
       <div className="p-4">
         {/* Player Header with Photo */}
         <div className="flex items-center mb-4">
-          {player.image ? (
-            <img 
-              src={player.image} 
-              alt={`${player.name}`} 
-              className="w-16 h-16 rounded-full mr-4 object-cover border border-gray-200"
-              onError={(e) => {
-                e.target.onerror = null;
-                e.target.src = 'data:image/svg+xml;charset=UTF-8,%3csvg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"%3e%3crect x="3" y="3" width="18" height="18" rx="2" ry="2"%3e%3c/rect%3e%3ccircle cx="8.5" cy="8.5" r="1.5"%3e%3c/circle%3e%3cpolyline points="21 15 16 10 5 21"%3e%3c/polyline%3e%3c/svg%3e';
-              }}
-            />
+          {player.imageUrl ? (
+            <div className="relative mr-4">
+              <img 
+                src={player.imageUrl} 
+                alt={`${player.name}`} 
+                className="w-16 h-16 rounded-full object-cover border border-gray-200 hover:w-24 hover:h-24 hover:absolute hover:z-10 transition-all cursor-pointer"
+                onClick={(e) => {
+                  e.stopPropagation(); // Prevent triggering the card onClick
+                  window.open(player.imageUrl, '_blank');
+                }}
+                onError={(e) => {
+                  e.target.onerror = null;
+                  e.target.src = 'data:image/svg+xml;charset=UTF-8,%3csvg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"%3e%3crect x="3" y="3" width="18" height="18" rx="2" ry="2"%3e%3c/rect%3e%3ccircle cx="8.5" cy="8.5" r="1.5"%3e%3c/circle%3e%3cpolyline points="21 15 16 10 5 21"%3e%3c/polyline%3e%3c/svg%3e';
+                }}
+              />
+            </div>
           ) : (
             <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center mr-4 border border-blue-200">
               <span className="text-2xl font-bold text-blue-700">

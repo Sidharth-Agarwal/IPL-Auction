@@ -79,8 +79,8 @@ const PlayerImport = ({ onImportComplete }) => {
         ['baseprice', 'base_price', 'base price', 'price', 'value'].includes(key.toLowerCase())
       );
       
-      const imageKey = Object.keys(row).find(key => 
-        ['image', 'photo', 'picture', 'player_image', 'player image'].includes(key.toLowerCase())
+      const imageUrlKey = Object.keys(row).find(key => 
+        ['image', 'imageurl', 'image_url', 'photo', 'picture', 'player_image', 'player image'].includes(key.toLowerCase())
       );
       
       // Create standardized player object
@@ -88,7 +88,7 @@ const PlayerImport = ({ onImportComplete }) => {
         name: nameKey ? row[nameKey] : '',
         role: roleKey ? row[roleKey] : '',
         basePrice: basePriceKey ? parseInt(row[basePriceKey]) || 1000 : 1000,
-        image: imageKey ? row[imageKey] : '',
+        imageUrl: imageUrlKey ? row[imageUrlKey] : '',
         status: 'available'  // Default status
       };
     }).filter(player => player.name && player.name.trim() !== '');  // Remove entries without names
@@ -151,7 +151,8 @@ const PlayerImport = ({ onImportComplete }) => {
           <li>Use CSV file format (.csv)</li>
           <li>Required columns: name, role, basePrice</li>
           <li>First row should be header row with column names</li>
-          <li>Optional columns: image (URL to player's photo)</li>
+          <li>Optional columns: imageUrl (URL to player's photo)</li>
+          <li>For images, provide direct URLs to images hosted on Firebase Storage or other platforms</li>
         </ul>
       </div>
       

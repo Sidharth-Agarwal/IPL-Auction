@@ -8,6 +8,7 @@ import Loading from '../common/Loading';
 import ErrorMessage from '../common/ErrorMessage';
 import Modal from '../common/Modal';
 import PlayerImport from './PlayerImport';
+import PlayerForm from './PlayerForm';
 
 const PlayerList = () => {
   const [players, setPlayers] = useState([]);
@@ -16,6 +17,7 @@ const PlayerList = () => {
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [showImportModal, setShowImportModal] = useState(false);
+  const [showPlayerFormModal, setShowPlayerFormModal] = useState(false);
   const [selectedPlayer, setSelectedPlayer] = useState(null);
   const [successMessage, setSuccessMessage] = useState('');
   
@@ -63,6 +65,16 @@ const PlayerList = () => {
     setShowImportModal(true);
   };
   
+  const handleAddPlayer = () => {
+    setSelectedPlayer(null);
+    setShowPlayerFormModal(true);
+  };
+  
+  const handleEditPlayer = (player) => {
+    setSelectedPlayer(player);
+    setShowPlayerFormModal(true);
+  };
+  
   const handleImportComplete = (result) => {
     setShowImportModal(false);
     setSuccessMessage(result.message);
@@ -76,11 +88,18 @@ const PlayerList = () => {
     fetchPlayers();
   };
   
-  const handleEditPlayer = (player) => {
-    setSelectedPlayer(player);
-    // In a real implementation, you would show a modal or navigate to an edit page
-    alert(`Editing player ${player.name} would be implemented here`);
+  const handlePlayerFormSuccess = (message) => {
+    setShowPlayerFormModal(false);
     setSelectedPlayer(null);
+    setSuccessMessage(message);
+    
+    // Clear success message after 3 seconds
+    setTimeout(() => {
+      setSuccessMessage('');
+    }, 3000);
+    
+    // Refresh players list
+    fetchPlayers();
   };
   
   const formatCurrency = (amount) => {
@@ -133,9 +152,20 @@ const PlayerList = () => {
             />
           </div>
         </div>
-        <div className="flex items-end">
+        <div className="flex items-end space-x-2">
           <Button 
             variant="primary" 
+            onClick={handleAddPlayer}
+            icon={
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+              </svg>
+            }
+          >
+            Add Player
+          </Button>
+          <Button 
+            variant="secondary" 
             onClick={handleImportClick}
             icon={
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -171,6 +201,9 @@ const PlayerList = () => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Status
                   </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Team
+                  </th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Actions
                   </th>
@@ -181,24 +214,25 @@ const PlayerList = () => {
                   <tr key={player.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
-                        {player.image ? (
+                        {player.imageUrl ? (
                           <img 
-                            src={player.image} 
+                            src={player.imageUrl} 
                             alt={player.name} 
-                            className="h-10 w-10 rounded-full mr-3 object-cover"
+                            className="w-12 h-12 rounded-full object-cover border hover:w-24 hover:h-24 transition-all cursor-pointer mr-3"
+                            onClick={() => window.open(player.imageUrl, '_blank')}
                             onError={(e) => {
                               e.target.onerror = null;
                               e.target.src = 'data:image/svg+xml;charset=UTF-8,%3csvg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"%3e%3crect x="3" y="3" width="18" height="18" rx="2" ry="2"%3e%3c/rect%3e%3ccircle cx="8.5" cy="8.5" r="1.5"%3e%3c/circle%3e%3cpolyline points="21 15 16 10 5 21"%3e%3c/polyline%3e%3c/svg%3e';
                             }}
                           />
                         ) : (
-                          <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center mr-3">
+                          <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center mr-3 flex-shrink-0">
                             <span className="text-lg font-bold text-blue-700">
                               {player.name.charAt(0)}
                             </span>
                           </div>
                         )}
-                        <div className="text-sm font-medium text-gray-900">{player.name}</div>
+                        <div className="ml-3 text-sm font-medium text-gray-900">{player.name}</div>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -214,6 +248,11 @@ const PlayerList = () => {
                          'bg-blue-100 text-blue-800'}`}>
                         {player.status || 'available'}
                       </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-500">
+                        {player.status === 'sold' ? (player.soldToTeam || '-') : '-'}
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <Button 
@@ -241,6 +280,26 @@ const PlayerList = () => {
       >
         <PlayerImport 
           onImportComplete={handleImportComplete}
+        />
+      </Modal>
+      
+      {/* Add/Edit Player Modal */}
+      <Modal
+        isOpen={showPlayerFormModal}
+        onClose={() => {
+          setShowPlayerFormModal(false);
+          setSelectedPlayer(null);
+        }}
+        title={selectedPlayer ? "Edit Player" : "Add New Player"}
+        size="lg"
+      >
+        <PlayerForm 
+          playerId={selectedPlayer?.id} 
+          onSuccess={handlePlayerFormSuccess}
+          onCancel={() => {
+            setShowPlayerFormModal(false);
+            setSelectedPlayer(null);
+          }}
         />
       </Modal>
     </div>

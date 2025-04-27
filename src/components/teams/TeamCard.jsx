@@ -15,11 +15,12 @@ const TeamCard = ({ team, onEdit }) => {
       <div>
         {/* Team Header with Logo */}
         <div className="flex items-center mb-4">
-          {team.logo ? (
+          {team.logoUrl ? (
             <img 
-              src={team.logo} 
+              src={team.logoUrl} 
               alt={`${team.name} Logo`} 
               className="w-16 h-16 rounded-full mr-4 object-cover border border-gray-200"
+              onClick={() => window.open(team.logoUrl, '_blank')}
               onError={(e) => {
                 e.target.onerror = null;
                 e.target.src = 'data:image/svg+xml;charset=UTF-8,%3csvg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"%3e%3crect x="3" y="3" width="18" height="18" rx="2" ry="2"%3e%3c/rect%3e%3ccircle cx="8.5" cy="8.5" r="1.5"%3e%3c/circle%3e%3cpolyline points="21 15 16 10 5 21"%3e%3c/polyline%3e%3c/svg%3e';

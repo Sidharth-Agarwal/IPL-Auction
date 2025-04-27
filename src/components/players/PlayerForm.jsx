@@ -1,6 +1,6 @@
-// src/components/teams/TeamForm.jsx
+// src/components/players/PlayerForm.jsx
 import React, { useState, useEffect } from 'react';
-import { createTeam, updateTeam, getTeam } from '../../services/teamService';
+import { addPlayer, updatePlayer, getPlayer } from '../../services/playerService';
 import Card from '../common/Card';
 import Button from '../common/Button';
 import ErrorMessage from '../common/ErrorMessage';
@@ -8,12 +8,15 @@ import Loading from '../common/Loading';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '../../firebase/config';
 
-const TeamForm = ({ teamId = null, onSuccess = null, onCancel = null }) => {
+const PlayerForm = ({ playerId = null, onSuccess = null, onCancel = null }) => {
   const initialFormData = {
     name: '',
-    owner: '',
-    wallet: 10000,
-    logoUrl: ''
+    role: '',
+    basePrice: 1000,
+    imageUrl: '',
+    status: 'available',
+    soldAmount: 0,
+    soldTo: null
   };
   
   const [formData, setFormData] = useState(initialFormData);
@@ -22,38 +25,58 @@ const TeamForm = ({ teamId = null, onSuccess = null, onCancel = null }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [initialLoading, setInitialLoading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState('');
-  const [logoFile, setLogoFile] = useState(null);
+  const [imageFile, setImageFile] = useState(null);
   
-  // Load team data if editing
+  // Role options
+  const roleOptions = [
+    'Batsman',
+    'Bowler',
+    'All-Rounder',
+    'Wicket-Keeper',
+    'Captain'
+  ];
+  
+  // Status options
+  const statusOptions = [
+    'available',
+    'sold',
+    'unsold'
+  ];
+  
+  // Load player data if editing
   useEffect(() => {
-    const loadTeam = async () => {
-      if (!teamId) return;
+    const loadPlayer = async () => {
+      if (!playerId) return;
       
       try {
         setInitialLoading(true);
-        const teamData = await getTeam(teamId);
+        const playerData = await getPlayer(playerId);
         setFormData({
-          name: teamData.name || '',
-          owner: teamData.owner || '',
-          wallet: teamData.wallet || 10000,
-          logoUrl: teamData.logoUrl || ''
+          name: playerData.name || '',
+          role: playerData.role || '',
+          basePrice: playerData.basePrice || 1000,
+          imageUrl: playerData.imageUrl || '',
+          status: playerData.status || 'available',
+          soldAmount: playerData.soldAmount || 0,
+          soldTo: playerData.soldTo || null,
+          soldToTeam: playerData.soldToTeam || ''
         });
         
-        if (teamData.logoUrl) {
-          setPreviewUrl(teamData.logoUrl);
+        if (playerData.imageUrl) {
+          setPreviewUrl(playerData.imageUrl);
         }
         
         setIsEditing(true);
         setInitialLoading(false);
       } catch (error) {
-        console.error('Error loading team:', error);
-        setFormErrors({ _general: 'Failed to load team data' });
+        console.error('Error loading player:', error);
+        setFormErrors({ _general: 'Failed to load player data' });
         setInitialLoading(false);
       }
     };
     
-    loadTeam();
-  }, [teamId]);
+    loadPlayer();
+  }, [playerId]);
 
   const handleChange = (e) => {
     const { name, value, type } = e.target;
@@ -84,7 +107,7 @@ const TeamForm = ({ teamId = null, onSuccess = null, onCancel = null }) => {
     if (!fileType.match('image.*')) {
       setFormErrors(prev => ({
         ...prev,
-        logoUrl: 'Please select an image file'
+        imageUrl: 'Please select an image file'
       }));
       return;
     }
@@ -92,18 +115,18 @@ const TeamForm = ({ teamId = null, onSuccess = null, onCancel = null }) => {
     // Create a preview URL
     const url = URL.createObjectURL(file);
     setPreviewUrl(url);
-    setLogoFile(file);
+    setImageFile(file);
     
     setFormErrors(prev => ({
       ...prev,
-      logoUrl: null
+      imageUrl: null
     }));
   };
 
   const handleRemoveImage = () => {
-    setLogoFile(null);
+    setImageFile(null);
     setPreviewUrl('');
-    setFormData(prev => ({ ...prev, logoUrl: '' }));
+    setFormData(prev => ({ ...prev, imageUrl: '' }));
     
     // Reset file input
     const fileInput = document.querySelector("input[type='file']");
@@ -116,11 +139,15 @@ const TeamForm = ({ teamId = null, onSuccess = null, onCancel = null }) => {
     const errors = {};
     
     if (!formData.name.trim()) {
-      errors.name = 'Team name is required';
+      errors.name = 'Player name is required';
     }
     
-    if (formData.wallet <= 0) {
-      errors.wallet = 'Wallet amount must be greater than 0';
+    if (formData.basePrice < 0) {
+      errors.basePrice = 'Base price cannot be negative';
+    }
+    
+    if (formData.status === 'sold' && !formData.soldAmount) {
+      errors.soldAmount = 'Sold amount is required when status is "sold"';
     }
     
     setFormErrors(errors);
@@ -138,46 +165,46 @@ const TeamForm = ({ teamId = null, onSuccess = null, onCancel = null }) => {
     try {
       setLoading(true);
       
-      let logoUrl = formData.logoUrl;
+      let imageUrl = formData.imageUrl;
       
-      // Upload logo to Firebase Storage if a new logo file is selected
-      if (logoFile && storage) {
+      // Upload image to Firebase Storage if a new image file is selected
+      if (imageFile && storage) {
         const timestamp = Date.now();
-        const imageRef = ref(storage, `teamLogos/${formData.name.replace(/\s+/g, '_')}_${timestamp}`);
+        const imageRef = ref(storage, `playerImages/${formData.name.replace(/\s+/g, '_')}_${timestamp}`);
         
         // Upload the image file
-        const snapshot = await uploadBytes(imageRef, logoFile);
+        const snapshot = await uploadBytes(imageRef, imageFile);
         
         // Get the download URL
-        logoUrl = await getDownloadURL(snapshot.ref);
+        imageUrl = await getDownloadURL(snapshot.ref);
       }
       
-      const teamData = {
+      const playerData = {
         ...formData,
-        logoUrl: logoUrl
+        imageUrl: imageUrl
       };
       
       if (isEditing) {
-        // Update existing team
-        await updateTeam(teamId, teamData);
+        // Update existing player
+        await updatePlayer(playerId, playerData);
         setLoading(false);
-        if (onSuccess) onSuccess('Team updated successfully!');
+        if (onSuccess) onSuccess('Player updated successfully!');
       } else {
-        // Create new team
-        const newTeam = await createTeam(teamData);
+        // Create new player
+        const newPlayer = await addPlayer(playerData);
         setLoading(false);
         
         // Reset form
         setFormData(initialFormData);
         setPreviewUrl('');
-        setLogoFile(null);
+        setImageFile(null);
         
         // Callback
-        if (onSuccess) onSuccess('Team created successfully!');
+        if (onSuccess) onSuccess('Player created successfully!');
       }
     } catch (error) {
-      console.error('Error saving team:', error);
-      setFormErrors({ _general: isEditing ? 'Failed to update team' : 'Failed to create team' });
+      console.error('Error saving player:', error);
+      setFormErrors({ _general: isEditing ? 'Failed to update player' : 'Failed to create player' });
       setLoading(false);
     }
   };
@@ -192,7 +219,7 @@ const TeamForm = ({ teamId = null, onSuccess = null, onCancel = null }) => {
       // Clear form
       setFormData(initialFormData);
       setPreviewUrl('');
-      setLogoFile(null);
+      setImageFile(null);
       setFormErrors({});
       
       // Reset file input
@@ -204,16 +231,16 @@ const TeamForm = ({ teamId = null, onSuccess = null, onCancel = null }) => {
   };
 
   if (initialLoading) {
-    return <Loading text="Loading team data..." />;
+    return <Loading text="Loading player data..." />;
   }
 
   return (
-    <Card title={isEditing ? 'Edit Team' : 'Create New Team'}>
+    <Card title={isEditing ? 'Edit Player' : 'Create New Player'}>
       <form onSubmit={handleSubmit} className="space-y-4 p-4">
-        {/* Team Name */}
+        {/* Player Name */}
         <div>
           <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
-            Team Name *
+            Player Name *
           </label>
           <input
             type="text"
@@ -230,29 +257,33 @@ const TeamForm = ({ teamId = null, onSuccess = null, onCancel = null }) => {
           )}
         </div>
         
-        {/* Team Owner */}
+        {/* Player Role */}
         <div>
-          <label htmlFor="owner" className="block text-sm font-medium text-gray-700 mb-1">
-            Team Owner
+          <label htmlFor="role" className="block text-sm font-medium text-gray-700 mb-1">
+            Role
           </label>
-          <input
-            type="text"
-            id="owner"
-            name="owner"
+          <select
+            id="role"
+            name="role"
             className={`block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm
-              ${formErrors.owner ? 'border-red-300' : 'border-gray-300'}`}
-            value={formData.owner}
+              ${formErrors.role ? 'border-red-300' : 'border-gray-300'}`}
+            value={formData.role}
             onChange={handleChange}
-          />
-          {formErrors.owner && (
-            <p className="mt-1 text-sm text-red-600">{formErrors.owner}</p>
+          >
+            <option value="">Select Role</option>
+            {roleOptions.map((role, index) => (
+              <option key={index} value={role}>{role}</option>
+            ))}
+          </select>
+          {formErrors.role && (
+            <p className="mt-1 text-sm text-red-600">{formErrors.role}</p>
           )}
         </div>
         
-        {/* Wallet Amount */}
+        {/* Base Price */}
         <div>
-          <label htmlFor="wallet" className="block text-sm font-medium text-gray-700 mb-1">
-            Initial Wallet Amount
+          <label htmlFor="basePrice" className="block text-sm font-medium text-gray-700 mb-1">
+            Base Price
           </label>
           <div className="relative rounded-md shadow-sm">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -260,53 +291,102 @@ const TeamForm = ({ teamId = null, onSuccess = null, onCancel = null }) => {
             </div>
             <input
               type="number"
-              id="wallet"
-              name="wallet"
+              id="basePrice"
+              name="basePrice"
               min="0"
-              step="1000"
+              step="100000"
               className={`block w-full pl-7 pr-12 rounded-md focus:ring-blue-500 focus:border-blue-500 sm:text-sm
-                ${formErrors.wallet ? 'border-red-300' : 'border-gray-300'}`}
-              value={formData.wallet}
+                ${formErrors.basePrice ? 'border-red-300' : 'border-gray-300'}`}
+              value={formData.basePrice}
               onChange={handleChange}
             />
           </div>
-          {formErrors.wallet ? (
-            <p className="mt-1 text-sm text-red-600">{formErrors.wallet}</p>
+          {formErrors.basePrice ? (
+            <p className="mt-1 text-sm text-red-600">{formErrors.basePrice}</p>
           ) : (
             <p className="mt-1 text-sm text-gray-500">
-              Default wallet amount is 10,000 credits
+              Default base price is 1,000 credits
             </p>
           )}
         </div>
         
-        {/* Team Logo */}
+        {/* Player Status (only show when editing) */}
+        {isEditing && (
+          <div>
+            <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-1">
+              Status
+            </label>
+            <select
+              id="status"
+              name="status"
+              className={`block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm
+                ${formErrors.status ? 'border-red-300' : 'border-gray-300'}`}
+              value={formData.status}
+              onChange={handleChange}
+            >
+              {statusOptions.map((status, index) => (
+                <option key={index} value={status}>{status}</option>
+              ))}
+            </select>
+          </div>
+        )}
+        
+        {/* Sold Amount (only show when status is 'sold') */}
+        {isEditing && formData.status === 'sold' && (
+          <div>
+            <label htmlFor="soldAmount" className="block text-sm font-medium text-gray-700 mb-1">
+              Sold Amount
+            </label>
+            <div className="relative rounded-md shadow-sm">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <span className="text-gray-500 sm:text-sm">$</span>
+              </div>
+              <input
+                type="number"
+                id="soldAmount"
+                name="soldAmount"
+                min="0"
+                step="100000"
+                className={`block w-full pl-7 pr-12 rounded-md focus:ring-blue-500 focus:border-blue-500 sm:text-sm
+                  ${formErrors.soldAmount ? 'border-red-300' : 'border-gray-300'}`}
+                value={formData.soldAmount}
+                onChange={handleChange}
+              />
+            </div>
+            {formErrors.soldAmount && (
+              <p className="mt-1 text-sm text-red-600">{formErrors.soldAmount}</p>
+            )}
+          </div>
+        )}
+        
+        {/* Player Image */}
         <div>
-          <label htmlFor="logo" className="block text-sm font-medium text-gray-700 mb-1">
-            Team Logo
+          <label htmlFor="image" className="block text-sm font-medium text-gray-700 mb-1">
+            Player Image
           </label>
           <input
             type="file"
-            id="logo"
-            name="logo"
+            id="image"
+            name="image"
             accept="image/*"
             className={`block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4
               file:rounded-md file:border-0 file:text-sm file:font-semibold
               file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100
-              ${formErrors.logoUrl ? 'border-red-300' : 'border-gray-300'}`}
+              ${formErrors.imageUrl ? 'border-red-300' : 'border-gray-300'}`}
             onChange={handleFileChange}
           />
-          {formErrors.logoUrl && (
-            <p className="mt-1 text-sm text-red-600">{formErrors.logoUrl}</p>
+          {formErrors.imageUrl && (
+            <p className="mt-1 text-sm text-red-600">{formErrors.imageUrl}</p>
           )}
           
-          {/* Logo Preview */}
+          {/* Image Preview with hover-to-enlarge functionality */}
           {previewUrl && (
             <div className="mt-2 flex items-center space-x-4">
-              <div>
+              <div className="relative">
                 <img 
                   src={previewUrl} 
-                  alt="Logo Preview" 
-                  className="h-20 w-20 rounded-full object-cover border border-gray-200"
+                  alt="Image Preview" 
+                  className="h-20 w-20 rounded-full object-cover bg-gray-100 border border-gray-200 hover:w-40 hover:h-40 hover:rounded-md transition-all cursor-pointer"
                   onClick={() => window.open(previewUrl, '_blank')}
                   onError={(e) => {
                     e.target.onerror = null;
@@ -319,7 +399,7 @@ const TeamForm = ({ teamId = null, onSuccess = null, onCancel = null }) => {
                 onClick={handleRemoveImage}
                 className="bg-red-500 text-white px-3 py-1 rounded-md hover:bg-red-600 text-sm"
               >
-                Remove Logo
+                Remove Image
               </button>
             </div>
           )}
@@ -346,7 +426,7 @@ const TeamForm = ({ teamId = null, onSuccess = null, onCancel = null }) => {
             loading={loading}
             loadingText={isEditing ? 'Updating...' : 'Creating...'}
           >
-            {isEditing ? 'Update Team' : 'Create Team'}
+            {isEditing ? 'Update Player' : 'Create Player'}
           </Button>
         </div>
       </form>
@@ -354,4 +434,4 @@ const TeamForm = ({ teamId = null, onSuccess = null, onCancel = null }) => {
   );
 };
 
-export default TeamForm;
+export default PlayerForm;
