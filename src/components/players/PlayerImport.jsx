@@ -85,13 +85,13 @@ const PlayerImport = ({ onImportComplete }) => {
       
       // Create standardized player object
       return {
-        name: row[nameKey] || '',
-        role: row[roleKey] || '',
-        basePrice: parseInt(row[basePriceKey]) || 1000,
-        image: row[imageKey] || '',
+        name: nameKey ? row[nameKey] : '',
+        role: roleKey ? row[roleKey] : '',
+        basePrice: basePriceKey ? parseInt(row[basePriceKey]) || 1000 : 1000,
+        image: imageKey ? row[imageKey] : '',
         status: 'available'  // Default status
       };
-    }).filter(player => player.name.trim() !== '');  // Remove entries without names
+    }).filter(player => player.name && player.name.trim() !== '');  // Remove entries without names
   };
 
   const handleImport = async () => {
@@ -143,155 +143,151 @@ const PlayerImport = ({ onImportComplete }) => {
   };
 
   return (
-    <Card title="Import Players">
-      <div className="space-y-6 p-4">
-        {/* Instructions */}
-        <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
-          <h4 className="text-blue-800 font-medium mb-2">Import Instructions</h4>
-          <ul className="text-blue-700 text-sm space-y-1 list-disc pl-5">
-            <li>Use CSV file format (.csv)</li>
-            <li>Required columns: name, role, basePrice</li>
-            <li>First row should be header row with column names</li>
-            <li>Optional columns: image (URL to player's photo)</li>
-          </ul>
-        </div>
-        
-        {/* Error Display */}
-        {error && (
-          <ErrorMessage message={error} />
-        )}
-        
-        {/* File Upload */}
-        <div 
-          className="border-2 border-dashed border-gray-300 rounded-md px-6 py-8"
-          onDragOver={handleDragOver}
-          onDrop={handleDrop}
-        >
-          <div className="text-center">
-            <svg 
-              className="mx-auto h-12 w-12 text-gray-400" 
-              fill="none" 
-              viewBox="0 0 24 24" 
-              stroke="currentColor" 
-              aria-hidden="true"
+    <div className="space-y-6">
+      {/* Instructions */}
+      <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
+        <h4 className="text-blue-800 font-medium mb-2">Import Instructions</h4>
+        <ul className="text-blue-700 text-sm space-y-1 list-disc pl-5">
+          <li>Use CSV file format (.csv)</li>
+          <li>Required columns: name, role, basePrice</li>
+          <li>First row should be header row with column names</li>
+          <li>Optional columns: image (URL to player's photo)</li>
+        </ul>
+      </div>
+      
+      {/* Error Display */}
+      {error && (
+        <ErrorMessage message={error} />
+      )}
+      
+      {/* File Upload */}
+      <div 
+        className="border-2 border-dashed border-gray-300 rounded-md px-6 py-8"
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
+      >
+        <div className="text-center">
+          <svg 
+            className="mx-auto h-12 w-12 text-gray-400" 
+            fill="none" 
+            viewBox="0 0 24 24" 
+            stroke="currentColor" 
+            aria-hidden="true"
+          >
+            <path 
+              strokeLinecap="round" 
+              strokeLinejoin="round" 
+              strokeWidth="2" 
+              d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" 
+            />
+          </svg>
+          
+          <div className="mt-4 flex text-sm text-gray-600 justify-center">
+            <label
+              htmlFor="file-upload"
+              className="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none"
             >
-              <path 
-                strokeLinecap="round" 
-                strokeLinejoin="round" 
-                strokeWidth="2" 
-                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" 
+              <span>Upload a file</span>
+              <input 
+                id="file-upload" 
+                name="file-upload" 
+                type="file" 
+                className="sr-only"
+                accept=".csv"
+                onChange={handleFileChange} 
+                ref={fileInputRef}
               />
-            </svg>
-            
-            <div className="mt-4 flex text-sm text-gray-600 justify-center">
-              <label
-                htmlFor="file-upload"
-                className="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none"
-              >
-                <span>Upload a file</span>
-                <input 
-                  id="file-upload" 
-                  name="file-upload" 
-                  type="file" 
-                  className="sr-only"
-                  accept=".csv"
-                  onChange={handleFileChange} 
-                  ref={fileInputRef}
-                />
-              </label>
-              <p className="pl-1">or drag and drop</p>
-            </div>
-            
-            <p className="text-xs text-gray-500 mt-1">
-              CSV files only (up to 10MB)
-            </p>
+            </label>
+            <p className="pl-1">or drag and drop</p>
           </div>
           
-          {file && (
-            <div className="mt-4 flex items-center justify-center">
-              <div className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm font-medium">
-                {file.name}
-              </div>
-              <button
-                type="button"
-                className="ml-2 text-red-600 hover:text-red-800"
-                onClick={() => {
-                  setFile(null);
-                  setPreviewData([]);
-                  setShowPreview(false);
-                  if (fileInputRef.current) {
-                    fileInputRef.current.value = '';
-                  }
-                }}
-                aria-label="Remove file"
-              >
-                <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
-                  <path
-                    fillRule="evenodd"
-                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-              </button>
-            </div>
-          )}
+          <p className="text-xs text-gray-500 mt-1">
+            CSV files only (up to 10MB)
+          </p>
         </div>
         
-        {/* Data Preview */}
-        {showPreview && previewData.length > 0 && (
-          <div className="bg-gray-50 p-4 rounded-md">
-            <h4 className="text-gray-700 font-medium mb-2">Data Preview</h4>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    {Object.keys(previewData[0]).map((header) => (
-                      <th 
-                        key={header}
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                      >
-                        {header}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {previewData.map((row, rowIndex) => (
-                    <tr key={rowIndex}>
-                      {Object.values(row).map((cell, cellIndex) => (
-                        <td 
-                          key={cellIndex}
-                          className="px-6 py-4 whitespace-nowrap text-sm text-gray-500"
-                        >
-                          {cell}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+        {file && (
+          <div className="mt-4 flex items-center justify-center">
+            <div className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm font-medium">
+              {file.name}
             </div>
-            <p className="text-xs text-gray-500 mt-2">
-              Showing first {previewData.length} rows of data
-            </p>
+            <button
+              type="button"
+              className="ml-2 text-red-600 hover:text-red-800"
+              onClick={() => {
+                setFile(null);
+                setPreviewData([]);
+                setShowPreview(false);
+                if (fileInputRef.current) {
+                  fileInputRef.current.value = '';
+                }
+              }}
+              aria-label="Remove file"
+            >
+              <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                <path
+                  fillRule="evenodd"
+                  d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </button>
           </div>
         )}
-        
-        {/* Import Button */}
-        <div>
-          <Button
-            onClick={handleImport}
-            variant="primary"
-            disabled={!file || loading}
-            loading={loading}
-            loadingText="Importing Players..."
-            fullWidth
-          >
-            Import Players
-          </Button>
-        </div>
       </div>
-    </Card>
+      
+      {/* Data Preview */}
+      {showPreview && previewData.length > 0 && (
+        <div>
+          <h4 className="text-gray-700 font-medium mb-2">Data Preview</h4>
+          <div className="overflow-x-auto border rounded-lg">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  {Object.keys(previewData[0]).map((header) => (
+                    <th 
+                      key={header}
+                      className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    >
+                      {header}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {previewData.map((row, rowIndex) => (
+                  <tr key={rowIndex}>
+                    {Object.values(row).map((cell, cellIndex) => (
+                      <td 
+                        key={cellIndex}
+                        className="px-4 py-2 whitespace-nowrap text-sm text-gray-500"
+                      >
+                        {cell}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="text-xs text-gray-500 mt-2">
+            Showing first {previewData.length} rows of data
+          </p>
+        </div>
+      )}
+      
+      {/* Import Button */}
+      <Button
+        onClick={handleImport}
+        variant="primary"
+        disabled={!file || loading}
+        loading={loading}
+        loadingText="Importing Players..."
+        fullWidth
+      >
+        Import Players
+      </Button>
+    </div>
   );
 };
 

@@ -1,6 +1,5 @@
 // src/components/common/Modal.jsx
 import React, { useEffect, useRef } from 'react';
-import PropTypes from 'prop-types';
 import { createPortal } from 'react-dom';
 import Button from './Button';
 
@@ -18,7 +17,6 @@ const Modal = ({
   isLoading = false,
   className = '',
   contentClassName = '',
-  testId = 'modal'
 }) => {
   const modalRef = useRef(null);
 
@@ -50,12 +48,12 @@ const Modal = ({
     }
   };
 
-  // Size classes
+  // Size classes - Updated with wider max-width values
   const sizeClasses = {
-    sm: 'max-w-md',
-    md: 'max-w-lg',
-    lg: 'max-w-2xl',
-    xl: 'max-w-4xl',
+    sm: 'max-w-lg', // Increased from max-w-md
+    md: 'max-w-2xl', // Increased from max-w-lg
+    lg: 'max-w-4xl', // Increased from max-w-2xl
+    xl: 'max-w-6xl', // Increased from max-w-4xl
     full: 'max-w-full mx-4'
   };
 
@@ -67,7 +65,6 @@ const Modal = ({
       aria-labelledby={title ? 'modal-title' : undefined}
       role="dialog"
       aria-modal="true"
-      data-testid={testId}
     >
       {/* Modal Backdrop */}
       <div 
@@ -137,23 +134,6 @@ const Modal = ({
     </div>,
     document.body
   );
-};
-
-Modal.propTypes = {
-  isOpen: PropTypes.bool.isRequired,
-  onClose: PropTypes.func.isRequired,
-  title: PropTypes.node,
-  children: PropTypes.node,
-  footer: PropTypes.node,
-  size: PropTypes.oneOf(['sm', 'md', 'lg', 'xl', 'full']),
-  closeOnEsc: PropTypes.bool,
-  closeOnOverlayClick: PropTypes.bool,
-  showCloseButton: PropTypes.bool,
-  closeButtonLabel: PropTypes.string,
-  isLoading: PropTypes.bool,
-  className: PropTypes.string,
-  contentClassName: PropTypes.string,
-  testId: PropTypes.string
 };
 
 export default Modal;

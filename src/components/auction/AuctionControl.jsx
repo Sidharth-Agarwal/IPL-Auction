@@ -4,7 +4,14 @@ import {
   getAvailablePlayers, 
   updatePlayerStatus 
 } from '../../services/playerService';
-import { getAllTeams } from '../../services/teamService';
+import { 
+  getAllTeams, 
+  getTeam 
+} from '../../services/teamService';
+import {
+  completePlayerSale,
+  markPlayerAsUnsold
+} from '../../services/auctionService';
 import Card from '../common/Card';
 import Button from '../common/Button';
 import PlayerDisplay from './PlayerDisplay';
@@ -20,6 +27,7 @@ const AuctionControl = () => {
   const [bidAmount, setBidAmount] = useState(0);
   const [selectedTeamId, setSelectedTeamId] = useState('');
   const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState('');
   
@@ -46,6 +54,16 @@ const AuctionControl = () => {
       console.error('Error loading auction data:', err);
       setError('Failed to load auction data. Please try again.');
       setLoading(false);
+    }
+  };
+  
+  // Refresh team data to get updated wallet amounts
+  const refreshTeamData = async () => {
+    try {
+      const teamsData = await getAllTeams();
+      setTeams(teamsData);
+    } catch (err) {
+      console.error('Error refreshing team data:', err);
     }
   };
   
@@ -78,16 +96,17 @@ const AuctionControl = () => {
     }
     
     try {
-      setLoading(true);
+      setActionLoading(true);
+      setError(null);
       
-      // Update player status to 'sold' and assign to team
-      await updatePlayerStatus(currentPlayer.id, 'sold', {
-        soldTo: selectedTeamId,
-        soldAmount: bidAmount
-      });
+      // Complete the sale - this will update both player and team
+      await completePlayerSale(currentPlayer.id, selectedTeamId, bidAmount);
       
       // Show success message
-      setSuccessMessage(`${currentPlayer.name} sold to ${teams.find(t => t.id === selectedTeamId)?.name || 'selected team'} for $${bidAmount.toLocaleString()}`);
+      const team = teams.find(t => t.id === selectedTeamId);
+      const teamName = team ? team.name : 'Selected team';
+      
+      setSuccessMessage(`${currentPlayer.name} sold to ${teamName} for $${bidAmount.toLocaleString()}`);
       
       // Clear success message after 3 seconds
       setTimeout(() => {
@@ -97,12 +116,15 @@ const AuctionControl = () => {
       // Remove the sold player from available players
       setAvailablePlayers(prev => prev.filter(p => p.id !== currentPlayer.id));
       
+      // Refresh team data to get updated wallet
+      await refreshTeamData();
+      
       // Check if there are more players
       if (availablePlayers.length <= 1) {
         // No more players
         setCurrentPlayer(null);
         setIsAuctionActive(false);
-        setLoading(false);
+        setActionLoading(false);
         return;
       }
       
@@ -112,11 +134,11 @@ const AuctionControl = () => {
       setBidAmount(nextPlayer.basePrice || 1000);
       setSelectedTeamId('');
       
-      setLoading(false);
+      setActionLoading(false);
     } catch (err) {
       console.error('Error marking player as sold:', err);
-      setError('Failed to complete sale. Please try again.');
-      setLoading(false);
+      setError(err.message || 'Failed to complete sale. Please try again.');
+      setActionLoading(false);
     }
   };
   
@@ -124,10 +146,11 @@ const AuctionControl = () => {
     if (!currentPlayer) return;
     
     try {
-      setLoading(true);
+      setActionLoading(true);
+      setError(null);
       
       // Update player status to 'unsold'
-      await updatePlayerStatus(currentPlayer.id, 'unsold');
+      await markPlayerAsUnsold(currentPlayer.id);
       
       // Remove the unsold player from available players
       setAvailablePlayers(prev => prev.filter(p => p.id !== currentPlayer.id));
@@ -137,7 +160,7 @@ const AuctionControl = () => {
         // No more players
         setCurrentPlayer(null);
         setIsAuctionActive(false);
-        setLoading(false);
+        setActionLoading(false);
         return;
       }
       
@@ -147,11 +170,11 @@ const AuctionControl = () => {
       setBidAmount(nextPlayer.basePrice || 1000);
       setSelectedTeamId('');
       
-      setLoading(false);
+      setActionLoading(false);
     } catch (err) {
       console.error('Error marking player as unsold:', err);
       setError('Failed to mark as unsold. Please try again.');
-      setLoading(false);
+      setActionLoading(false);
     }
   };
   
@@ -257,7 +280,9 @@ const AuctionControl = () => {
                   <Button 
                     variant="success" 
                     onClick={handleSoldClick} 
-                    disabled={!selectedTeamId}
+                    disabled={!selectedTeamId || actionLoading}
+                    loading={actionLoading && selectedTeamId}
+                    loadingText="Processing..."
                     fullWidth
                     icon={
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -271,6 +296,9 @@ const AuctionControl = () => {
                   <Button 
                     variant="danger" 
                     onClick={handleUnsoldClick}
+                    disabled={actionLoading}
+                    loading={actionLoading && !selectedTeamId}
+                    loadingText="Processing..."
                     fullWidth
                     icon={
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -284,6 +312,7 @@ const AuctionControl = () => {
                   <Button 
                     variant="secondary" 
                     onClick={handleSkipClick}
+                    disabled={actionLoading || availablePlayers.length <= 1}
                     fullWidth
                     icon={
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -353,6 +382,68 @@ const AuctionControl = () => {
                 {availablePlayers.length - 1} more player{availablePlayers.length - 1 !== 1 ? 's' : ''} available
               </p>
             </div>
+          </div>
+        </Card>
+      )}
+      
+      {/* Team Wallet Information */}
+      {isAuctionActive && teams.length > 0 && (
+        <Card title="Team Wallet Status">
+          <div className="p-4 overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Team</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Available Funds</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Players</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {teams.map(team => (
+                  <tr key={team.id} className={selectedTeamId === team.id ? 'bg-blue-50' : 'hover:bg-gray-50'}>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        {team.logo ? (
+                          <img 
+                            src={team.logo} 
+                            alt={team.name} 
+                            className="h-8 w-8 rounded-full mr-3"
+                            onError={(e) => {
+                              e.target.onerror = null;
+                              e.target.src = 'data:image/svg+xml;charset=UTF-8,%3csvg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"%3e%3crect x="3" y="3" width="18" height="18" rx="2" ry="2"%3e%3c/rect%3e%3ccircle cx="8.5" cy="8.5" r="1.5"%3e%3c/circle%3e%3cpolyline points="21 15 16 10 5 21"%3e%3c/polyline%3e%3c/svg%3e';
+                            }}
+                          />
+                        ) : (
+                          <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center mr-3">
+                            <span className="text-sm font-bold text-blue-700">
+                              {team.name.charAt(0)}
+                            </span>
+                          </div>
+                        )}
+                        <div className="text-sm font-medium text-gray-900">{team.name}</div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
+                      <span className={`font-medium ${
+                        selectedTeamId === team.id && bidAmount > team.wallet 
+                          ? 'text-red-600' 
+                          : 'text-green-600'
+                      }`}>
+                        ${team.wallet?.toLocaleString() || '0'}
+                      </span>
+                      {selectedTeamId === team.id && (
+                        <span className="ml-2 text-xs text-gray-500">
+                          (After bid: ${(team.wallet - bidAmount).toLocaleString()})
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
+                      {team.players?.length || 0}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </Card>
       )}
