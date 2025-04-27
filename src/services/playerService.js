@@ -2,145 +2,189 @@
 import { 
     collection, 
     addDoc, 
+    doc, 
+    getDoc, 
     getDocs, 
     updateDoc, 
-    deleteDoc, 
-    doc,
+    deleteDoc,
     query,
-    where
-  } from 'firebase/firestore';
-  import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-  import { db, storage } from './firebaseConfig';
-  import Papa from 'papaparse';
-  
-  export const playerService = {
-    // Import players from CSV
-    async importPlayersFromCSV(file) {
-      return new Promise((resolve, reject) => {
-        Papa.parse(file, {
-          header: true,
-          complete: async (results) => {
-            try {
-              const importedPlayers = [];
-              for (const playerData of results.data) {
-                // Validate and transform player data
-                const player = {
-                  name: playerData.name || '',
-                  basePrice: parseFloat(playerData.basePrice) || 0,
-                  category: playerData.category || '',
-                  status: 'available',
-                  stats: {
-                    matches: parseInt(playerData.matches) || 0,
-                    runs: parseInt(playerData.runs) || 0,
-                    average: parseFloat(playerData.average) || 0
-                  },
-                  createdAt: new Date()
-                };
-  
-                // Add player to Firestore
-                const docRef = await addDoc(collection(db, 'players'), player);
-                importedPlayers.push({ id: docRef.id, ...player });
-              }
-              resolve(importedPlayers);
-            } catch (error) {
-              reject(error);
-            }
-          },
-          error: (error) => reject(error)
-        });
-      });
-    },
-  
-    // Create a single player
-    async createPlayer(playerData, imageFile = null) {
-      try {
-        // Upload image if provided
-        let imageUrl = '';
-        if (imageFile) {
-          const storageRef = ref(storage, `players/${Date.now()}_${imageFile.name}`);
-          const snapshot = await uploadBytes(storageRef, imageFile);
-          imageUrl = await getDownloadURL(snapshot.ref);
-        }
-  
-        // Prepare player object
-        const player = {
-          name: playerData.name,
-          basePrice: parseFloat(playerData.basePrice) || 0,
-          category: playerData.category,
-          status: 'available',
-          imageUrl: imageUrl,
-          stats: {
-            matches: parseInt(playerData.matches) || 0,
-            runs: parseInt(playerData.runs) || 0,
-            average: parseFloat(playerData.average) || 0
-          },
-          createdAt: new Date()
-        };
-  
-        // Add to Firestore
-        const docRef = await addDoc(collection(db, 'players'), player);
-        return { id: docRef.id, ...player };
-      } catch (error) {
-        console.error('Error creating player:', error);
-        throw error;
-      }
-    },
-  
-    // Get all players
-    async getAllPlayers() {
-      try {
-        const playersCollection = collection(db, 'players');
-        const snapshot = await getDocs(playersCollection);
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      } catch (error) {
-        console.error('Error fetching players:', error);
-        throw error;
-      }
-    },
-  
-    // Update a player
-    async updatePlayer(playerId, updateData, newImageFile = null) {
-      try {
-        const playerRef = doc(db, 'players', playerId);
-        
-        // Handle image upload if new image provided
-        if (newImageFile) {
-          const storageRef = ref(storage, `players/${Date.now()}_${newImageFile.name}`);
-          const snapshot = await uploadBytes(storageRef, newImageFile);
-          updateData.imageUrl = await getDownloadURL(snapshot.ref);
-        }
-  
-        // Update Firestore document
-        await updateDoc(playerRef, updateData);
-        return { id: playerId, ...updateData };
-      } catch (error) {
-        console.error('Error updating player:', error);
-        throw error;
-      }
-    },
-  
-    // Delete a player
-    async deletePlayer(playerId) {
-      try {
-        const playerRef = doc(db, 'players', playerId);
-        await deleteDoc(playerRef);
-        return playerId;
-      } catch (error) {
-        console.error('Error deleting player:', error);
-        throw error;
-      }
-    },
-  
-    // Get players by category
-    async getPlayersByCategory(category) {
-      try {
-        const playersRef = collection(db, 'players');
-        const q = query(playersRef, where('category', '==', category));
-        const snapshot = await getDocs(q);
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      } catch (error) {
-        console.error('Error fetching players by category:', error);
-        throw error;
-      }
+    where,
+    serverTimestamp 
+} from 'firebase/firestore';
+import { db } from '../firebase/config';
+
+const playersCollection = collection(db, 'players');
+
+// Add a single player
+export const addPlayer = async (playerData) => {
+    try {
+    const player = {
+        ...playerData,
+        status: 'available', // available, sold, unsold
+        soldTo: null,
+        soldAmount: 0,
+        createdAt: serverTimestamp()
+    };
+    
+    const docRef = await addDoc(playersCollection, player);
+    return { id: docRef.id, ...player };
+    } catch (error) {
+    console.error('Error adding player:', error);
+    throw error;
     }
-  };
+};
+
+// Add multiple players (bulk import)
+export const addPlayers = async (playersArray) => {
+    try {
+    const results = [];
+    
+    for (const playerData of playersArray) {
+        const player = {
+        ...playerData,
+        status: 'available',
+        soldTo: null,
+        soldAmount: 0,
+        createdAt: serverTimestamp()
+        };
+        
+        const docRef = await addDoc(playersCollection, player);
+        results.push({ id: docRef.id, ...player });
+    }
+    
+    return results;
+    } catch (error) {
+    console.error('Error adding players:', error);
+    throw error;
+    }
+};
+
+// Get all players
+export const getAllPlayers = async () => {
+    try {
+    const querySnapshot = await getDocs(playersCollection);
+    return querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+    }));
+    } catch (error) {
+    console.error('Error getting players:', error);
+    throw error;
+    }
+};
+
+// Get available players for auction
+export const getAvailablePlayers = async () => {
+    try {
+    const q = query(playersCollection, where("status", "==", "available"));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+    }));
+    } catch (error) {
+    console.error('Error getting available players:', error);
+    throw error;
+    }
+};
+
+// Get a specific player
+export const getPlayer = async (playerId) => {
+    try {
+    const docRef = doc(db, 'players', playerId);
+    const docSnap = await getDoc(docRef);
+    
+    if (docSnap.exists()) {
+        return { id: docSnap.id, ...docSnap.data() };
+    } else {
+        throw new Error('Player not found');
+    }
+    } catch (error) {
+    console.error('Error getting player:', error);
+    throw error;
+    }
+};
+
+// Update player information
+export const updatePlayer = async (playerId, playerData) => {
+    try {
+    const playerRef = doc(db, 'players', playerId);
+    
+    // Ensure we're not overwriting existing data
+    const playerDoc = await getDoc(playerRef);
+    if (!playerDoc.exists()) {
+        throw new Error('Player not found');
+    }
+    
+    // Update only the fields that are provided
+    await updateDoc(playerRef, {
+        ...playerData,
+        updatedAt: serverTimestamp()
+    });
+    
+    return { id: playerId, ...playerData };
+    } catch (error) {
+    console.error('Error updating player:', error);
+    throw error;
+    }
+};
+
+// Update player status (sold/unsold)
+export const updatePlayerStatus = async (playerId, status, data = {}) => {
+    try {
+    const playerRef = doc(db, 'players', playerId);
+    
+    // Ensure player exists
+    const playerDoc = await getDoc(playerRef);
+    if (!playerDoc.exists()) {
+        throw new Error('Player not found');
+    }
+    
+    // Update status and related fields
+    const updateData = {
+        status,
+        updatedAt: serverTimestamp()
+    };
+    
+    // If status is 'sold', add sold details
+    if (status === 'sold' && data.soldTo) {
+        updateData.soldTo = data.soldTo;
+        updateData.soldAmount = data.soldAmount || 0;
+    }
+    
+    // If status is 'unsold', clear sold details
+    if (status === 'unsold') {
+        updateData.soldTo = null;
+        updateData.soldAmount = 0;
+    }
+    
+    await updateDoc(playerRef, updateData);
+    
+    return { id: playerId, ...updateData };
+    } catch (error) {
+    console.error('Error updating player status:', error);
+    throw error;
+    }
+};
+
+// Delete a player
+export const deletePlayer = async (playerId) => {
+    try {
+    await deleteDoc(doc(db, 'players', playerId));
+    return { id: playerId };
+    } catch (error) {
+    console.error('Error deleting player:', error);
+    throw error;
+    }
+};
+
+export default {
+    addPlayer,
+    addPlayers,
+    getAllPlayers,
+    getAvailablePlayers,
+    getPlayer,
+    updatePlayer,
+    updatePlayerStatus,
+    deletePlayer
+};

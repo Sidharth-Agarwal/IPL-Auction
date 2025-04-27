@@ -1,16 +1,39 @@
+// src/App.jsx
 import React from 'react';
-import { useAuth } from './context/AuthContext';
-import AdminLogin from './components/auth/AdminLogin';
-import Dashboard from './pages/Dashboard';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 
-const App = () => {
-  const { user } = useAuth();
+// Context Providers
+import { AppProvider } from './context/AppContext';
 
+// Pages
+import TeamsPage from './pages/TeamsPage';
+import PlayersPage from './pages/PlayersPage';
+import AuctionPage from './pages/AuctionPage';
+import ResultsPage from './pages/ResultsPage';
+import NotFoundPage from './pages/NotFoundPage';
+
+// Components
+import NotificationComponent from './components/common/NotificationComponent';
+
+function App() {
   return (
-    <div className="min-h-screen bg-gray-100">
-      {user ? <Dashboard /> : <AdminLogin />}
-    </div>
+    <Router>
+      <AppProvider>
+        <NotificationComponent />
+        <Routes>
+          {/* Main Routes */}
+          <Route path="/" element={<TeamsPage />} />
+          <Route path="/teams" element={<TeamsPage />} />
+          <Route path="/players" element={<PlayersPage />} />
+          <Route path="/auction" element={<AuctionPage />} />
+          <Route path="/results" element={<ResultsPage />} />
+          
+          {/* Catch All */}
+          <Route path="*" element={<NotFoundPage />} />
+        </Routes>
+      </AppProvider>
+    </Router>
   );
-};
+}
 
 export default App;

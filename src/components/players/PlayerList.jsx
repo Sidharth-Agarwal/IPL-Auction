@@ -1,252 +1,248 @@
+// src/components/players/PlayerList.jsx
 import React, { useState, useEffect } from 'react';
-import { playerService } from '../../services/playerService';
+import { getAllPlayers } from '../../services/playerService';
+import PlayerCard from './PlayerCard';
+import Card from '../common/Card';
+import Button from '../common/Button';
+import Loading from '../common/Loading';
+import ErrorMessage from '../common/ErrorMessage';
+import Modal from '../common/Modal';
+import PlayerImport from './PlayerImport';
 
 const PlayerList = () => {
   const [players, setPlayers] = useState([]);
+  const [filteredPlayers, setFilteredPlayers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [editingPlayer, setEditingPlayer] = useState(null);
-  const [selectedImage, setSelectedImage] = useState(null);
-
-  // Fetch players on component mount
+  const [error, setError] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [selectedPlayer, setSelectedPlayer] = useState(null);
+  const [successMessage, setSuccessMessage] = useState('');
+  
+  // Load players on initial render
   useEffect(() => {
     fetchPlayers();
   }, []);
-
+  
+  // Filter players when search term changes
+  useEffect(() => {
+    if (searchTerm.trim() === '') {
+      setFilteredPlayers(players);
+    } else {
+      const term = searchTerm.toLowerCase();
+      const filtered = players.filter(
+        player => player.name.toLowerCase().includes(term) || 
+                (player.role && player.role.toLowerCase().includes(term))
+      );
+      setFilteredPlayers(filtered);
+    }
+  }, [players, searchTerm]);
+  
   const fetchPlayers = async () => {
     try {
       setLoading(true);
-      const fetchedPlayers = await playerService.getAllPlayers();
-      setPlayers(fetchedPlayers);
+      setError(null);
+      
+      const playersData = await getAllPlayers();
+      setPlayers(playersData);
+      setFilteredPlayers(playersData);
+      
       setLoading(false);
     } catch (err) {
-      setError('Failed to fetch players');
+      console.error('Error loading players:', err);
+      setError('Failed to load players. Please try again.');
       setLoading(false);
     }
   };
-
-  // Handle player deletion
-  const handleDeletePlayer = async (playerId) => {
-    if (window.confirm('Are you sure you want to delete this player?')) {
-      try {
-        await playerService.deletePlayer(playerId);
-        setPlayers(players.filter(player => player.id !== playerId));
-      } catch (err) {
-        setError('Failed to delete player');
-      }
-    }
+  
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
   };
-
-  // Start editing a player
+  
+  const handleImportClick = () => {
+    setShowImportModal(true);
+  };
+  
+  const handleImportComplete = (result) => {
+    setShowImportModal(false);
+    setSuccessMessage(result.message);
+    
+    // Clear success message after 3 seconds
+    setTimeout(() => {
+      setSuccessMessage('');
+    }, 3000);
+    
+    // Refresh players list
+    fetchPlayers();
+  };
+  
   const handleEditPlayer = (player) => {
-    setEditingPlayer({...player});
-    setSelectedImage(null);
+    setSelectedPlayer(player);
+    // In a real implementation, you would show a modal or navigate to an edit page
+    alert(`Editing player ${player.name} would be implemented here`);
+    setSelectedPlayer(null);
   };
-
-  // Handle input change in edit mode
-  const handleEditInputChange = (e) => {
-    const { name, value } = e.target;
-    setEditingPlayer(prev => ({
-      ...prev,
-      [name]: value
-    }));
+  
+  const formatCurrency = (amount) => {
+    return `$${amount.toLocaleString()}`;
   };
-
-  // Handle image selection for editing
-  const handleEditImageChange = (e) => {
-    const file = e.target.files[0];
-    setSelectedImage(file);
-  };
-
-  // Save edited player
-  const handleSavePlayer = async (e) => {
-    e.preventDefault();
-    try {
-      // Prepare update data
-      const updateData = {
-        name: editingPlayer.name,
-        basePrice: parseFloat(editingPlayer.basePrice),
-        category: editingPlayer.category,
-        stats: {
-          matches: parseInt(editingPlayer.stats.matches) || 0,
-          runs: parseInt(editingPlayer.stats.runs) || 0,
-          average: parseFloat(editingPlayer.stats.average) || 0
-        }
-      };
-
-      // Update player with optional image
-      const updatedPlayer = await playerService.updatePlayer(
-        editingPlayer.id, 
-        updateData, 
-        selectedImage
-      );
-
-      // Update players list
-      setPlayers(players.map(player => 
-        player.id === updatedPlayer.id ? {...player, ...updatedPlayer} : player
-      ));
-
-      // Reset editing state
-      setEditingPlayer(null);
-      setSelectedImage(null);
-    } catch (err) {
-      setError('Failed to update player');
-      console.error(err);
-    }
-  };
-
-  // Render loading state
+  
   if (loading) {
-    return (
-      <div className="flex justify-center items-center h-screen">
-        <div className="animate-spin rounded-full h-32 w-32 border-t-2 border-blue-500"></div>
-      </div>
-    );
+    return <Loading text="Loading players..." />;
   }
-
+  
   return (
-    <div className="container mx-auto p-6 bg-white shadow-md rounded-lg">
-      <h2 className="text-2xl font-bold mb-6 text-gray-800">Players List</h2>
-
-      {/* Error Message */}
+    <div className="space-y-6">
+      {/* Success Message */}
+      {successMessage && (
+        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded relative" role="alert">
+          <span className="block sm:inline">{successMessage}</span>
+          <span className="absolute top-0 bottom-0 right-0 px-4 py-3" onClick={() => setSuccessMessage('')}>
+            <svg className="fill-current h-6 w-6 text-green-500" role="button" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+              <title>Close</title>
+              <path d="M14.348 14.849a1.2 1.2 0 0 1-1.697 0L10 11.819l-2.651 3.029a1.2 1.2 0 1 1-1.697-1.697l2.758-3.15-2.759-3.152a1.2 1.2 0 1 1 1.697-1.697L10 8.183l2.651-3.031a1.2 1.2 0 1 1 1.697 1.697l-2.758 3.152 2.758 3.15a1.2 1.2 0 0 1 0 1.698z"/>
+            </svg>
+          </span>
+        </div>
+      )}
+      
+      {/* Error Display */}
       {error && (
-        <div className="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
-          {error}
-        </div>
+        <ErrorMessage message={error} onDismiss={() => setError(null)} />
       )}
-
-      {/* Players Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {players.map((player) => (
-          <div 
-            key={player.id} 
-            className="border rounded-lg p-4 shadow-sm bg-gray-50 relative"
-          >
-            {/* Player Edit Mode */}
-            {editingPlayer && editingPlayer.id === player.id ? (
-              <form onSubmit={handleSavePlayer} className="space-y-4">
-                <input 
-                  type="text"
-                  name="name"
-                  value={editingPlayer.name}
-                  onChange={handleEditInputChange}
-                  placeholder="Player Name"
-                  required
-                  className="w-full border rounded px-3 py-2"
-                />
-                <input 
-                  type="number"
-                  name="basePrice"
-                  value={editingPlayer.basePrice}
-                  onChange={handleEditInputChange}
-                  placeholder="Base Price"
-                  required
-                  className="w-full border rounded px-3 py-2"
-                />
-                <select 
-                  name="category"
-                  value={editingPlayer.category}
-                  onChange={handleEditInputChange}
-                  required
-                  className="w-full border rounded px-3 py-2"
-                >
-                  <option value="">Select Category</option>
-                  <option value="Batsman">Batsman</option>
-                  <option value="Bowler">Bowler</option>
-                  <option value="All-Rounder">All-Rounder</option>
-                  <option value="Wicket-Keeper">Wicket-Keeper</option>
-                </select>
-                <input 
-                  type="number"
-                  name="stats.matches"
-                  value={editingPlayer.stats.matches}
-                  onChange={handleEditInputChange}
-                  placeholder="Matches Played"
-                  className="w-full border rounded px-3 py-2"
-                />
-                <input 
-                  type="number"
-                  name="stats.runs"
-                  value={editingPlayer.stats.runs}
-                  onChange={handleEditInputChange}
-                  placeholder="Total Runs"
-                  className="w-full border rounded px-3 py-2"
-                />
-                <input 
-                  type="number"
-                  name="stats.average"
-                  step="0.01"
-                  value={editingPlayer.stats.average}
-                  onChange={handleEditInputChange}
-                  placeholder="Average"
-                  className="w-full border rounded px-3 py-2"
-                />
-                <input 
-                  type="file" 
-                  accept="image/*"
-                  onChange={handleEditImageChange}
-                  className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                />
-                <div className="flex space-x-2">
-                  <button 
-                    type="submit"
-                    className="flex-1 bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
-                  >
-                    Save
-                  </button>
-                  <button 
-                    type="button"
-                    onClick={() => setEditingPlayer(null)}
-                    className="flex-1 bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </form>
-            ) : (
-              // Player View Mode
-              <>
-                {player.imageUrl && (
-                  <img 
-                    src={player.imageUrl} 
-                    alt={player.name} 
-                    className="w-32 h-32 object-cover rounded-full mx-auto mb-4"
-                  />
-                )}
-                <h3 className="text-xl font-bold text-center mb-2">{player.name}</h3>
-                <div className="text-center text-gray-600 space-y-1">
-                  <p>Category: {player.category}</p>
-                  <p>Base Price: {player.basePrice}</p>
-                  <p>Matches: {player.stats?.matches || 0}</p>
-                  <p>Runs: {player.stats?.runs || 0}</p>
-                  <p>Average: {player.stats?.average || 0}</p>
-                </div>
-                <div className="flex justify-between mt-4">
-                  <button 
-                    onClick={() => handleEditPlayer(player)}
-                    className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600"
-                  >
-                    Edit
-                  </button>
-                  <button 
-                    onClick={() => handleDeletePlayer(player.id)}
-                    className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
-                  >
-                    Delete
-                  </button>
-                </div>
-              </>
-            )}
+      
+      {/* Header with Search and Import Button */}
+      <div className="flex flex-col md:flex-row justify-between gap-4 bg-white p-4 rounded-lg shadow">
+        <div className="flex-grow">
+          <label htmlFor="search" className="block text-sm font-medium text-gray-700 mb-1">
+            Search Players
+          </label>
+          <div className="relative rounded-md shadow-sm">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <svg className="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <input
+              type="text"
+              id="search"
+              className="focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md"
+              placeholder="Search by name or role..."
+              value={searchTerm}
+              onChange={handleSearchChange}
+            />
           </div>
-        ))}
-      </div>
-
-      {/* No Players Message */}
-      {players.length === 0 && (
-        <div className="text-center text-gray-500 mt-10">
-          <p className="text-xl">No players found. Start importing players!</p>
         </div>
-      )}
+        <div className="flex items-end">
+          <Button 
+            variant="primary" 
+            onClick={handleImportClick}
+            icon={
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0l-4 4m4-4v12" />
+              </svg>
+            }
+          >
+            Import Players
+          </Button>
+        </div>
+      </div>
+      
+      {/* Players Table */}
+      <Card title={`Players (${players.length})`}>
+        {filteredPlayers.length === 0 ? (
+          <div className="text-center py-8">
+            <p className="text-gray-500">No players found. Import players to get started!</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Player
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Role
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Base Price
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {filteredPlayers.map(player => (
+                  <tr key={player.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        {player.image ? (
+                          <img 
+                            src={player.image} 
+                            alt={player.name} 
+                            className="h-10 w-10 rounded-full mr-3 object-cover"
+                            onError={(e) => {
+                              e.target.onerror = null;
+                              e.target.src = 'data:image/svg+xml;charset=UTF-8,%3csvg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"%3e%3crect x="3" y="3" width="18" height="18" rx="2" ry="2"%3e%3c/rect%3e%3ccircle cx="8.5" cy="8.5" r="1.5"%3e%3c/circle%3e%3cpolyline points="21 15 16 10 5 21"%3e%3c/polyline%3e%3c/svg%3e';
+                            }}
+                          />
+                        ) : (
+                          <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center mr-3">
+                            <span className="text-lg font-bold text-blue-700">
+                              {player.name.charAt(0)}
+                            </span>
+                          </div>
+                        )}
+                        <div className="text-sm font-medium text-gray-900">{player.name}</div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-500">{player.role || 'N/A'}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right">
+                      <div className="text-sm font-medium text-green-600">{formatCurrency(player.basePrice || 0)}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                        ${player.status === 'sold' ? 'bg-green-100 text-green-800' : 
+                         player.status === 'unsold' ? 'bg-red-100 text-red-800' : 
+                         'bg-blue-100 text-blue-800'}`}>
+                        {player.status || 'available'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <Button 
+                        variant="outline" 
+                        size="xs" 
+                        onClick={() => handleEditPlayer(player)}
+                      >
+                        Edit
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+      
+      {/* Import Modal */}
+      <Modal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        title="Import Players"
+        size="lg"
+      >
+        <PlayerImport 
+          onImportComplete={handleImportComplete}
+        />
+      </Modal>
     </div>
   );
 };

@@ -1,249 +1,183 @@
+// src/components/teams/TeamList.jsx
 import React, { useState, useEffect } from 'react';
-import { teamService } from '../../services/teamService';
-import { playerService } from '../../services/playerService';
+import { getAllTeams } from '../../services/teamService';
+import TeamCard from './TeamCard';
+import Card from '../common/Card';
+import Button from '../common/Button';
+import Loading from '../common/Loading';
+import ErrorMessage from '../common/ErrorMessage';
+import Modal from '../common/Modal';
+import TeamForm from './TeamForm';
 
 const TeamList = () => {
   const [teams, setTeams] = useState([]);
-  const [players, setPlayers] = useState([]);
+  const [filteredTeams, setFilteredTeams] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [editingTeam, setEditingTeam] = useState(null);
-  const [selectedLogo, setSelectedLogo] = useState(null);
-  const [selectedPlayers, setSelectedPlayers] = useState([]);
+  const [error, setError] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [editingTeamId, setEditingTeamId] = useState(null);
+  const [successMessage, setSuccessMessage] = useState('');
 
-  // Fetch teams and players on component mount
+  // Load teams on initial render
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        const [fetchedTeams, fetchedPlayers] = await Promise.all([
-          teamService.getAllTeams(),
-          playerService.getAllPlayers()
-        ]);
-        setTeams(fetchedTeams);
-        setPlayers(fetchedPlayers);
-        setLoading(false);
-      } catch (err) {
-        setError('Failed to fetch teams and players');
-        setLoading(false);
-      }
-    };
-
-    fetchData();
+    fetchTeams();
   }, []);
 
-  // Handle team deletion
-  const handleDeleteTeam = async (teamId) => {
-    if (window.confirm('Are you sure you want to delete this team?')) {
-      try {
-        await teamService.deleteTeam(teamId);
-        setTeams(teams.filter(team => team.id !== teamId));
-      } catch (err) {
-        setError('Failed to delete team');
-      }
-    }
-  };
-
-  // Start editing a team
-  const handleEditTeam = (team) => {
-    setEditingTeam({...team});
-    setSelectedLogo(null);
-    // Preselect existing players
-    setSelectedPlayers(team.players || []);
-  };
-
-  // Handle input change in edit mode
-  const handleEditInputChange = (e) => {
-    const { name, value } = e.target;
-    setEditingTeam(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-
-  // Handle logo selection for editing
-  const handleEditLogoChange = (e) => {
-    const file = e.target.files[0];
-    setSelectedLogo(file);
-  };
-
-  // Handle player selection
-  const handlePlayerSelect = (playerId) => {
-    setSelectedPlayers(prev => 
-      prev.includes(playerId)
-        ? prev.filter(id => id !== playerId)
-        : [...prev, playerId]
-    );
-  };
-
-  // Save edited team
-  const handleSaveTeam = async (e) => {
-    e.preventDefault();
-    try {
-      // Prepare update data
-      const updateData = {
-        name: editingTeam.name,
-        wallet: parseFloat(editingTeam.wallet),
-        players: selectedPlayers
-      };
-
-      // Update team with optional logo
-      const updatedTeam = await teamService.updateTeam(
-        editingTeam.id, 
-        updateData, 
-        selectedLogo
+  // Filter teams when search term changes
+  useEffect(() => {
+    if (searchTerm.trim() === '') {
+      setFilteredTeams(teams);
+    } else {
+      const term = searchTerm.toLowerCase();
+      const filtered = teams.filter(
+        team => team.name.toLowerCase().includes(term) || 
+                (team.owner && team.owner.toLowerCase().includes(term))
       );
+      setFilteredTeams(filtered);
+    }
+  }, [teams, searchTerm]);
 
-      // Update teams list
-      setTeams(teams.map(team => 
-        team.id === updatedTeam.id ? {...team, ...updatedTeam} : team
-      ));
-
-      // Reset editing state
-      setEditingTeam(null);
-      setSelectedLogo(null);
-      setSelectedPlayers([]);
+  const fetchTeams = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const teamsData = await getAllTeams();
+      setTeams(teamsData);
+      setFilteredTeams(teamsData);
+      
+      setLoading(false);
     } catch (err) {
-      setError('Failed to update team');
-      console.error(err);
+      console.error('Error loading teams:', err);
+      setError('Failed to load teams. Please try again.');
+      setLoading(false);
     }
   };
 
-  // Render loading state
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
+  };
+
+  const handleAddTeam = () => {
+    setEditingTeamId(null);
+    setShowAddModal(true);
+  };
+
+  const handleEditTeam = (teamId) => {
+    setEditingTeamId(teamId);
+    setShowAddModal(true);
+  };
+
+  const handleFormSuccess = (message) => {
+    setShowAddModal(false);
+    setSuccessMessage(message);
+    
+    // Clear success message after 3 seconds
+    setTimeout(() => {
+      setSuccessMessage('');
+    }, 3000);
+    
+    // Refresh teams list
+    fetchTeams();
+  };
+
+  const handleFormCancel = () => {
+    setShowAddModal(false);
+    setEditingTeamId(null);
+  };
+
   if (loading) {
-    return (
-      <div className="flex justify-center items-center h-screen">
-        <div className="animate-spin rounded-full h-32 w-32 border-t-2 border-blue-500"></div>
-      </div>
-    );
+    return <Loading text="Loading teams..." />;
   }
 
   return (
-    <div className="container mx-auto p-6 bg-white shadow-md rounded-lg">
-      <h2 className="text-2xl font-bold mb-6 text-gray-800">Teams List</h2>
-
-      {/* Error Message */}
+    <div className="space-y-6">
+      {/* Success Message */}
+      {successMessage && (
+        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded relative" role="alert">
+          <span className="block sm:inline">{successMessage}</span>
+          <span className="absolute top-0 bottom-0 right-0 px-4 py-3" onClick={() => setSuccessMessage('')}>
+            <svg className="fill-current h-6 w-6 text-green-500" role="button" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+              <title>Close</title>
+              <path d="M14.348 14.849a1.2 1.2 0 0 1-1.697 0L10 11.819l-2.651 3.029a1.2 1.2 0 1 1-1.697-1.697l2.758-3.15-2.759-3.152a1.2 1.2 0 1 1 1.697-1.697L10 8.183l2.651-3.031a1.2 1.2 0 1 1 1.697 1.697l-2.758 3.152 2.758 3.15a1.2 1.2 0 0 1 0 1.698z"/>
+            </svg>
+          </span>
+        </div>
+      )}
+      
+      {/* Error Display */}
       {error && (
-        <div className="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
-          {error}
-        </div>
+        <ErrorMessage message={error} onDismiss={() => setError(null)} />
       )}
-
-      {/* Teams Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {teams.map((team) => (
-          <div 
-            key={team.id} 
-            className="border rounded-lg p-4 shadow-sm bg-gray-50 relative"
-          >
-            {/* Team Edit Mode */}
-            {editingTeam && editingTeam.id === team.id ? (
-              <form onSubmit={handleSaveTeam} className="space-y-4">
-                <input 
-                  type="text"
-                  name="name"
-                  value={editingTeam.name}
-                  onChange={handleEditInputChange}
-                  placeholder="Team Name"
-                  required
-                  className="w-full border rounded px-3 py-2"
-                />
-                <input 
-                  type="number"
-                  name="wallet"
-                  value={editingTeam.wallet}
-                  onChange={handleEditInputChange}
-                  placeholder="Wallet Amount"
-                  required
-                  className="w-full border rounded px-3 py-2"
-                />
-                
-                {/* Player Selection */}
-                <div>
-                  <h4 className="text-lg font-semibold mb-2">Select Players</h4>
-                  <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto border rounded p-2">
-                    {players.map((player) => (
-                      <label 
-                        key={player.id} 
-                        className="flex items-center space-x-2"
-                      >
-                        <input 
-                          type="checkbox"
-                          checked={selectedPlayers.includes(player.id)}
-                          onChange={() => handlePlayerSelect(player.id)}
-                          className="form-checkbox"
-                        />
-                        <span>{player.name}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Logo Upload */}
-                <input 
-                  type="file" 
-                  accept="image/*"
-                  onChange={handleEditLogoChange}
-                  className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                />
-
-                <div className="flex space-x-2">
-                  <button 
-                    type="submit"
-                    className="flex-1 bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
-                  >
-                    Save
-                  </button>
-                  <button 
-                    type="button"
-                    onClick={() => setEditingTeam(null)}
-                    className="flex-1 bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </form>
-            ) : (
-              // Team View Mode
-              <>
-                {team.logoUrl && (
-                  <img 
-                    src={team.logoUrl} 
-                    alt={`${team.name} logo`} 
-                    className="w-32 h-32 object-cover rounded-full mx-auto mb-4"
-                  />
-                )}
-                <h3 className="text-xl font-bold text-center mb-2">{team.name}</h3>
-                <div className="text-center text-gray-600 space-y-1">
-                  <p>Wallet: {team.wallet}</p>
-                  <p>Players: {team.players ? team.players.length : 0}</p>
-                </div>
-                <div className="flex justify-between mt-4">
-                  <button 
-                    onClick={() => handleEditTeam(team)}
-                    className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600"
-                  >
-                    Edit
-                  </button>
-                  <button 
-                    onClick={() => handleDeleteTeam(team.id)}
-                    className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
-                  >
-                    Delete
-                  </button>
-                </div>
-              </>
-            )}
+      
+      {/* Header with Search and Add Button */}
+      <div className="flex flex-col md:flex-row justify-between gap-4 bg-white p-4 rounded-lg shadow">
+        <div className="flex-grow">
+          <label htmlFor="search" className="block text-sm font-medium text-gray-700 mb-1">
+            Search Teams
+          </label>
+          <div className="relative rounded-md shadow-sm">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <svg className="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <input
+              type="text"
+              id="search"
+              className="focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md"
+              placeholder="Search by name or owner..."
+              value={searchTerm}
+              onChange={handleSearchChange}
+            />
           </div>
-        ))}
+        </div>
+        <div className="flex items-end">
+          <Button 
+            variant="primary" 
+            onClick={handleAddTeam}
+            icon={
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+              </svg>
+            }
+          >
+            Add Team
+          </Button>
+        </div>
       </div>
-
-      {/* No Teams Message */}
-      {teams.length === 0 && (
-        <div className="text-center text-gray-500 mt-10">
-          <p className="text-xl">No teams found. Start creating teams!</p>
+      
+      {/* Teams Grid */}
+      {filteredTeams.length === 0 ? (
+        <Card className="text-center py-8">
+          <p className="text-gray-500">No teams found. Create a new team to get started!</p>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredTeams.map(team => (
+            <TeamCard 
+              key={team.id} 
+              team={team} 
+              onEdit={() => handleEditTeam(team.id)}
+            />
+          ))}
         </div>
       )}
+      
+      {/* Add/Edit Modal */}
+      <Modal
+        isOpen={showAddModal}
+        onClose={handleFormCancel}
+        title={editingTeamId ? "Edit Team" : "Add New Team"}
+        size="lg"
+      >
+        <TeamForm 
+          teamId={editingTeamId} 
+          onSuccess={handleFormSuccess}
+          onCancel={handleFormCancel}
+        />
+      </Modal>
     </div>
   );
 };
