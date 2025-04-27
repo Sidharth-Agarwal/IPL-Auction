@@ -34,10 +34,12 @@ const Button = ({
   
   const sizeClasses = {
     xs: 'py-1 px-2 text-xs',
-    sm: 'py-1.5 px-3 text-sm',
+    sm: 'py-1.5 px-3 text-sm', // Slightly adjusted for header buttons
     md: 'py-2 px-4 text-base',
     lg: 'py-2.5 px-5 text-lg',
-    xl: 'py-3 px-6 text-xl'
+    xl: 'py-3 px-6 text-xl',
+    // Added header specific size
+    header: 'py-1 px-3 text-sm'
   };
   
   const roundedClasses = {
@@ -98,7 +100,7 @@ Button.propTypes = {
   ]),
   disabled: PropTypes.bool,
   className: PropTypes.string,
-  size: PropTypes.oneOf(['xs', 'sm', 'md', 'lg', 'xl']),
+  size: PropTypes.oneOf(['xs', 'sm', 'md', 'lg', 'xl', 'header']),
   fullWidth: PropTypes.bool,
   icon: PropTypes.node,
   iconPosition: PropTypes.oneOf(['left', 'right']),
