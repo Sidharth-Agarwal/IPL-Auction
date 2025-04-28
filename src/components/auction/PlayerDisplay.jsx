@@ -8,6 +8,37 @@ const PlayerDisplay = ({ player }) => {
   const formatCurrency = (amount) => {
     return `$${amount.toLocaleString()}`;
   };
+
+  // Enhanced image rendering with proper error handling
+  const renderPlayerImage = () => {
+    if (!player.imageUrl) {
+      return (
+        <div className="w-40 h-40 rounded-lg bg-blue-100 flex items-center justify-center mb-4 border border-blue-200">
+          <span className="text-6xl font-bold text-blue-700">
+            {player.name.charAt(0).toUpperCase()}
+          </span>
+        </div>
+      );
+    }
+
+    return (
+      <img 
+        src={player.imageUrl} 
+        alt={player.name} 
+        className="w-40 h-40 rounded-lg object-cover mb-4 border border-gray-200"
+        onError={(e) => {
+          e.target.onerror = null;
+          e.target.src = 'data:image/svg+xml;charset=UTF-8,%3csvg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"%3e%3crect x="3" y="3" width="18" height="18" rx="2" ry="2"%3e%3c/rect%3e%3ccircle cx="8.5" cy="8.5" r="1.5"%3e%3c/circle%3e%3cpolyline points="21 15 16 10 5 21"%3e%3c/polyline%3e%3c/svg%3e';
+        }}
+        onClick={() => {
+          if (player.imageUrl) {
+            window.open(player.imageUrl, '_blank');
+          }
+        }}
+        style={{ cursor: player.imageUrl ? 'pointer' : 'default' }}
+      />
+    );
+  };
   
   return (
     <Card title="Player Details">
@@ -16,23 +47,7 @@ const PlayerDisplay = ({ player }) => {
           {/* Player Image and Basic Info */}
           <div className="md:col-span-1">
             <div className="flex flex-col items-center">
-              {player.image ? (
-                <img 
-                  src={player.image} 
-                  alt={player.name} 
-                  className="w-40 h-40 rounded-lg object-cover mb-4 border border-gray-200"
-                  onError={(e) => {
-                    e.target.onerror = null;
-                    e.target.src = 'data:image/svg+xml;charset=UTF-8,%3csvg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"%3e%3crect x="3" y="3" width="18" height="18" rx="2" ry="2"%3e%3c/rect%3e%3ccircle cx="8.5" cy="8.5" r="1.5"%3e%3c/circle%3e%3cpolyline points="21 15 16 10 5 21"%3e%3c/polyline%3e%3c/svg%3e';
-                  }}
-                />
-              ) : (
-                <div className="w-40 h-40 rounded-lg bg-blue-100 flex items-center justify-center mb-4 border border-blue-200">
-                  <span className="text-6xl font-bold text-blue-700">
-                    {player.name.charAt(0)}
-                  </span>
-                </div>
-              )}
+              {renderPlayerImage()}
               
               <div className="text-center">
                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">

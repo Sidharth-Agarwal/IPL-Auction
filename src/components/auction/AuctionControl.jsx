@@ -190,6 +190,48 @@ const AuctionControl = () => {
     setBidAmount(availablePlayers[nextIndex].basePrice || 1000);
     setSelectedTeamId('');
   };
+
+  // Helper function to render player image
+  const renderPlayerImage = (player, imgClass = "h-12 w-12 rounded-full object-cover border border-gray-200") => {
+    return player.imageUrl ? (
+      <img 
+        src={player.imageUrl} 
+        alt={player.name} 
+        className={imgClass}
+        onError={(e) => {
+          e.target.onerror = null;
+          e.target.src = 'data:image/svg+xml;charset=UTF-8,%3csvg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"%3e%3crect x="3" y="3" width="18" height="18" rx="2" ry="2"%3e%3c/rect%3e%3ccircle cx="8.5" cy="8.5" r="1.5"%3e%3c/circle%3e%3cpolyline points="21 15 16 10 5 21"%3e%3c/polyline%3e%3c/svg%3e';
+        }}
+      />
+    ) : (
+      <div className={imgClass.replace("object-cover", "") + " bg-blue-100 flex items-center justify-center"}>
+        <span className="text-lg font-bold text-blue-700">
+          {player.name.charAt(0).toUpperCase()}
+        </span>
+      </div>
+    );
+  };
+
+  // Helper function to render team logo
+  const renderTeamLogo = (team, imgClass = "h-8 w-8 rounded-full mr-3") => {
+    return team.logoUrl ? (
+      <img 
+        src={team.logoUrl} 
+        alt={team.name} 
+        className={imgClass}
+        onError={(e) => {
+          e.target.onerror = null;
+          e.target.src = 'data:image/svg+xml;charset=UTF-8,%3csvg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"%3e%3crect x="3" y="3" width="18" height="18" rx="2" ry="2"%3e%3c/rect%3e%3ccircle cx="8.5" cy="8.5" r="1.5"%3e%3c/circle%3e%3cpolyline points="21 15 16 10 5 21"%3e%3c/polyline%3e%3c/svg%3e';
+        }}
+      />
+    ) : (
+      <div className={imgClass.replace("mr-3", "") + " bg-blue-100 flex items-center justify-center"}>
+        <span className="text-sm font-bold text-blue-700">
+          {team.name.charAt(0).toUpperCase()}
+        </span>
+      </div>
+    );
+  };
   
   if (loading) {
     return <Loading text="Loading auction data..." />;
@@ -353,23 +395,7 @@ const AuctionControl = () => {
                     }}
                   >
                     <div className="flex justify-center mb-2">
-                      {player.image ? (
-                        <img 
-                          src={player.image} 
-                          alt={player.name} 
-                          className="h-12 w-12 rounded-full object-cover border border-gray-200"
-                          onError={(e) => {
-                            e.target.onerror = null;
-                            e.target.src = 'data:image/svg+xml;charset=UTF-8,%3csvg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"%3e%3crect x="3" y="3" width="18" height="18" rx="2" ry="2"%3e%3c/rect%3e%3ccircle cx="8.5" cy="8.5" r="1.5"%3e%3c/circle%3e%3cpolyline points="21 15 16 10 5 21"%3e%3c/polyline%3e%3c/svg%3e';
-                          }}
-                        />
-                      ) : (
-                        <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center border border-blue-200">
-                          <span className="text-lg font-bold text-blue-700">
-                            {player.name.charAt(0)}
-                          </span>
-                        </div>
-                      )}
+                      {renderPlayerImage(player)}
                     </div>
                     <p className="text-sm font-medium truncate">{player.name}</p>
                     <p className="text-xs text-gray-500">${player.basePrice?.toLocaleString() || '1,000'}</p>
@@ -403,23 +429,7 @@ const AuctionControl = () => {
                   <tr key={team.id} className={selectedTeamId === team.id ? 'bg-blue-50' : 'hover:bg-gray-50'}>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
-                        {team.logo ? (
-                          <img 
-                            src={team.logo} 
-                            alt={team.name} 
-                            className="h-8 w-8 rounded-full mr-3"
-                            onError={(e) => {
-                              e.target.onerror = null;
-                              e.target.src = 'data:image/svg+xml;charset=UTF-8,%3csvg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"%3e%3crect x="3" y="3" width="18" height="18" rx="2" ry="2"%3e%3c/rect%3e%3ccircle cx="8.5" cy="8.5" r="1.5"%3e%3c/circle%3e%3cpolyline points="21 15 16 10 5 21"%3e%3c/polyline%3e%3c/svg%3e';
-                            }}
-                          />
-                        ) : (
-                          <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center mr-3">
-                            <span className="text-sm font-bold text-blue-700">
-                              {team.name.charAt(0)}
-                            </span>
-                          </div>
-                        )}
+                        {renderTeamLogo(team)}
                         <div className="text-sm font-medium text-gray-900">{team.name}</div>
                       </div>
                     </td>

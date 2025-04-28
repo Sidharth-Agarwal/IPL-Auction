@@ -27,6 +27,29 @@ const BidControl = ({
   const formatCurrency = (amount) => {
     return `$${amount.toLocaleString()}`;
   };
+
+  // Function to render team logo with proper error handling
+  const renderTeamLogo = (team) => {
+    if (!team) return null;
+
+    return team.logoUrl ? (
+      <img 
+        src={team.logoUrl} 
+        alt={team.name} 
+        className="w-8 h-8 rounded-full mr-2"
+        onError={(e) => {
+          e.target.onerror = null;
+          e.target.src = 'data:image/svg+xml;charset=UTF-8,%3csvg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"%3e%3crect x="3" y="3" width="18" height="18" rx="2" ry="2"%3e%3c/rect%3e%3ccircle cx="8.5" cy="8.5" r="1.5"%3e%3c/circle%3e%3cpolyline points="21 15 16 10 5 21"%3e%3c/polyline%3e%3c/svg%3e';
+        }}
+      />
+    ) : (
+      <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center mr-2">
+        <span className="text-sm font-bold text-blue-700">
+          {team.name.charAt(0).toUpperCase()}
+        </span>
+      </div>
+    );
+  };
   
   return (
     <div className="space-y-4 bg-white p-4 rounded-lg border border-gray-200">
@@ -110,11 +133,7 @@ const BidControl = ({
         {selectedTeamId && (
           <div className="mt-2 bg-blue-50 p-2 rounded-md">
             <div className="flex items-center">
-              <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center mr-2">
-                <span className="text-sm font-bold text-blue-700">
-                  {teams.find(t => t.id === selectedTeamId)?.name.charAt(0) || 'T'}
-                </span>
-              </div>
+              {renderTeamLogo(teams.find(t => t.id === selectedTeamId))}
               <div>
                 <p className="text-sm font-medium">{teams.find(t => t.id === selectedTeamId)?.name || 'Team'}</p>
                 <p className="text-xs text-blue-600">

@@ -13,6 +13,7 @@ const ResultsView = () => {
   const [activeTab, setActiveTab] = useState('teams');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [exportLoading, setExportLoading] = useState(false);
   
   // Load auction results on initial render
   useEffect(() => {
@@ -68,6 +69,150 @@ const ResultsView = () => {
   const formatCurrency = (amount) => {
     return `$${amount.toLocaleString()}`;
   };
+
+  // Helper function to render player image
+  const renderPlayerImage = (player, imgClass = "h-10 w-10 rounded-full mr-3") => {
+    return player.imageUrl ? (
+      <img 
+        src={player.imageUrl} 
+        alt={player.name} 
+        className={imgClass}
+        onError={(e) => {
+          e.target.onerror = null;
+          e.target.src = 'data:image/svg+xml;charset=UTF-8,%3csvg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"%3e%3crect x="3" y="3" width="18" height="18" rx="2" ry="2"%3e%3c/rect%3e%3ccircle cx="8.5" cy="8.5" r="1.5"%3e%3c/circle%3e%3cpolyline points="21 15 16 10 5 21"%3e%3c/polyline%3e%3c/svg%3e';
+        }}
+      />
+    ) : (
+      <div className={imgClass.replace("mr-3", "") + " bg-blue-100 flex items-center justify-center"}>
+        <span className="text-lg font-bold text-blue-700">
+          {player.name.charAt(0).toUpperCase()}
+        </span>
+      </div>
+    );
+  };
+
+  // Helper function to render team logo
+  const renderTeamLogo = (team, imgClass = "h-12 w-12 rounded-full mr-4") => {
+    return team.logoUrl ? (
+      <img 
+        src={team.logoUrl} 
+        alt={team.name} 
+        className={imgClass}
+        onError={(e) => {
+          e.target.onerror = null;
+          e.target.src = 'data:image/svg+xml;charset=UTF-8,%3csvg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"%3e%3crect x="3" y="3" width="18" height="18" rx="2" ry="2"%3e%3c/rect%3e%3ccircle cx="8.5" cy="8.5" r="1.5"%3e%3c/circle%3e%3cpolyline points="21 15 16 10 5 21"%3e%3c/polyline%3e%3c/svg%3e';
+        }}
+      />
+    ) : (
+      <div className={imgClass.replace("mr-4", "") + " bg-blue-100 flex items-center justify-center border border-blue-200"}>
+        <span className="text-lg font-bold text-blue-700">
+          {team.name.charAt(0).toUpperCase()}
+        </span>
+      </div>
+    );
+  };
+
+  // Export team data to CSV
+  const exportTeamDataToCSV = (teamId) => {
+    try {
+      setExportLoading(true);
+      const team = getTeamById(teamId);
+      if (!team) throw new Error('Team not found');
+      
+      const teamPlayers = getTeamPlayers(teamId);
+      
+      // No players to export
+      if (teamPlayers.length === 0) {
+        alert('No players to export for this team.');
+        setExportLoading(false);
+        return;
+      }
+      
+      // Prepare CSV content
+      const headers = ['Player Name', 'Role', 'Price', 'Status'];
+      let csvContent = headers.join(',') + '\n';
+      
+      // Add player data rows
+      teamPlayers.forEach(player => {
+        const row = [
+          `"${player.name}"`, // Add quotes to handle commas in names
+          `"${player.role || 'N/A'}"`,
+          player.soldAmount || 0,
+          `"${player.status || 'available'}"`
+        ];
+        csvContent += row.join(',') + '\n';
+      });
+      
+      // Create download link
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `${team.name}_Players.csv`);
+      document.body.appendChild(link);
+      
+      // Trigger download and cleanup
+      link.click();
+      document.body.removeChild(link);
+      setExportLoading(false);
+    } catch (err) {
+      console.error('Error exporting team data:', err);
+      alert('Failed to export team data. Please try again.');
+      setExportLoading(false);
+    }
+  };
+
+  // Export all teams data to CSV
+  const exportAllTeamsDataToCSV = () => {
+    try {
+      setExportLoading(true);
+      
+      // If no sold players, show alert
+      if (getSoldPlayers().length === 0) {
+        alert('No player data to export.');
+        setExportLoading(false);
+        return;
+      }
+      
+      // Prepare CSV content
+      const headers = ['Team Name', 'Player Name', 'Role', 'Price'];
+      let csvContent = headers.join(',') + '\n';
+      
+      // Add data for each team and their players
+      teams.forEach(team => {
+        const teamPlayers = getTeamPlayers(team.id);
+        
+        if (teamPlayers.length > 0) {
+          teamPlayers.forEach(player => {
+            const row = [
+              `"${team.name}"`,
+              `"${player.name}"`,
+              `"${player.role || 'N/A'}"`,
+              player.soldAmount || 0
+            ];
+            csvContent += row.join(',') + '\n';
+          });
+        }
+      });
+      
+      // Create download link
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', 'Auction_Results.csv');
+      document.body.appendChild(link);
+      
+      // Trigger download and cleanup
+      link.click();
+      document.body.removeChild(link);
+      setExportLoading(false);
+    } catch (err) {
+      console.error('Error exporting all teams data:', err);
+      alert('Failed to export auction results. Please try again.');
+      setExportLoading(false);
+    }
+  };
   
   if (loading) {
     return <Loading text="Loading auction results..." />;
@@ -109,6 +254,24 @@ const ResultsView = () => {
         </div>
       </Card>
       
+      {/* Export All Button */}
+      <div className="flex justify-end">
+        <Button
+          variant="primary"
+          onClick={exportAllTeamsDataToCSV}
+          loading={exportLoading}
+          loadingText="Exporting..."
+          disabled={exportLoading}
+          icon={
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+          }
+        >
+          Export All Teams Data
+        </Button>
+      </div>
+      
       {/* Tabs */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <div className="border-b border-gray-200">
@@ -148,7 +311,8 @@ const ResultsView = () => {
                   <p className="text-gray-500">No teams found</p>
                 </div>
               ) : (
-                <div className="space-y-6">
+                // Changed from a vertical list to a column-wise grid layout
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {teams.map(team => {
                     const teamPlayers = getTeamPlayers(team.id);
                     const spent = getTeamSpent(team.id);
@@ -157,23 +321,7 @@ const ResultsView = () => {
                       <Card key={team.id} className="border border-gray-200">
                         <div className="p-4">
                           <div className="flex items-center mb-4">
-                            {team.logo ? (
-                              <img 
-                                src={team.logo} 
-                                alt={team.name} 
-                                className="h-12 w-12 rounded-full mr-4"
-                                onError={(e) => {
-                                  e.target.onerror = null;
-                                  e.target.src = 'data:image/svg+xml;charset=UTF-8,%3csvg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"%3e%3crect x="3" y="3" width="18" height="18" rx="2" ry="2"%3e%3c/rect%3e%3ccircle cx="8.5" cy="8.5" r="1.5"%3e%3c/circle%3e%3cpolyline points="21 15 16 10 5 21"%3e%3c/polyline%3e%3c/svg%3e';
-                                }}
-                              />
-                            ) : (
-                              <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center mr-4">
-                                <span className="text-lg font-bold text-blue-700">
-                                  {team.name.charAt(0)}
-                                </span>
-                              </div>
-                            )}
+                            {renderTeamLogo(team)}
                             <div>
                               <h3 className="text-xl font-bold">{team.name}</h3>
                               <p className="text-gray-500">{team.owner || 'No owner specified'}</p>
@@ -200,7 +348,23 @@ const ResultsView = () => {
                           {/* Team Players */}
                           {teamPlayers.length > 0 ? (
                             <div>
-                              <h4 className="text-sm font-medium text-gray-700 mb-2">Players:</h4>
+                              <div className="flex justify-between items-center mb-2">
+                                <h4 className="text-sm font-medium text-gray-700">Players:</h4>
+                                {/* Export Button */}
+                                <Button 
+                                  variant="outline" 
+                                  size="xs"
+                                  onClick={() => exportTeamDataToCSV(team.id)}
+                                  disabled={exportLoading}
+                                  icon={
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                    </svg>
+                                  }
+                                >
+                                  Export CSV
+                                </Button>
+                              </div>
                               <div className="border rounded-lg overflow-hidden">
                                 <table className="min-w-full divide-y divide-gray-200">
                                   <thead className="bg-gray-50">
@@ -215,23 +379,7 @@ const ResultsView = () => {
                                       <tr key={player.id}>
                                         <td className="px-4 py-2 whitespace-nowrap">
                                           <div className="flex items-center">
-                                            {player.image ? (
-                                              <img 
-                                                src={player.image} 
-                                                alt={player.name} 
-                                                className="h-6 w-6 rounded-full mr-2"
-                                                onError={(e) => {
-                                                  e.target.onerror = null;
-                                                  e.target.src = 'data:image/svg+xml;charset=UTF-8,%3csvg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"%3e%3crect x="3" y="3" width="18" height="18" rx="2" ry="2"%3e%3c/rect%3e%3ccircle cx="8.5" cy="8.5" r="1.5"%3e%3c/circle%3e%3cpolyline points="21 15 16 10 5 21"%3e%3c/polyline%3e%3c/svg%3e';
-                                                }}
-                                              />
-                                            ) : (
-                                              <div className="h-6 w-6 rounded-full bg-gray-100 flex items-center justify-center mr-2">
-                                                <span className="text-xs font-bold text-gray-700">
-                                                  {player.name.charAt(0)}
-                                                </span>
-                                              </div>
-                                            )}
+                                            {renderPlayerImage(player, "h-6 w-6 rounded-full mr-2")}
                                             <span className="text-sm font-medium text-gray-900">{player.name}</span>
                                           </div>
                                         </td>
@@ -280,23 +428,7 @@ const ResultsView = () => {
                           <tr key={player.id} className="hover:bg-gray-50">
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div className="flex items-center">
-                                {player.image ? (
-                                  <img 
-                                    src={player.image} 
-                                    alt={player.name} 
-                                    className="h-10 w-10 rounded-full mr-3"
-                                    onError={(e) => {
-                                      e.target.onerror = null;
-                                      e.target.src = 'data:image/svg+xml;charset=UTF-8,%3csvg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"%3e%3crect x="3" y="3" width="18" height="18" rx="2" ry="2"%3e%3c/rect%3e%3ccircle cx="8.5" cy="8.5" r="1.5"%3e%3c/circle%3e%3cpolyline points="21 15 16 10 5 21"%3e%3c/polyline%3e%3c/svg%3e';
-                                    }}
-                                  />
-                                ) : (
-                                  <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center mr-3">
-                                    <span className="text-lg font-bold text-blue-700">
-                                      {player.name.charAt(0)}
-                                    </span>
-                                  </div>
-                                )}
+                                {renderPlayerImage(player)}
                                 <div className="text-sm font-medium text-gray-900">{player.name}</div>
                               </div>
                             </td>
