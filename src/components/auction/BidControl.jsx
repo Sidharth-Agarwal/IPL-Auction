@@ -1,6 +1,7 @@
 // src/components/auction/BidControl.jsx
 import React from 'react';
 import Button from '../common/Button';
+import { formatIndianRupee } from '../../utils/currencyUtils';
 
 const BidControl = ({ 
   bidAmount, 
@@ -22,10 +23,6 @@ const BidControl = ({
   
   const handleTeamChange = (e) => {
     onTeamSelect(e.target.value);
-  };
-  
-  const formatCurrency = (amount) => {
-    return `$${amount.toLocaleString()}`;
   };
 
   // Function to render team logo with proper error handling
@@ -62,7 +59,7 @@ const BidControl = ({
         </label>
         <div className="mt-1 relative rounded-md shadow-sm">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <span className="text-gray-500 sm:text-sm">$</span>
+            <span className="text-gray-500 sm:text-sm">₹</span>
           </div>
           <input
             type="number"
@@ -124,7 +121,7 @@ const BidControl = ({
           <option value="">Select a team</option>
           {teams.map(team => (
             <option key={team.id} value={team.id}>
-              {team.name} ({formatCurrency(team.wallet || 0)})
+              {team.name} ({formatIndianRupee(team.wallet || 0)})
             </option>
           ))}
         </select>
@@ -137,7 +134,7 @@ const BidControl = ({
               <div>
                 <p className="text-sm font-medium">{teams.find(t => t.id === selectedTeamId)?.name || 'Team'}</p>
                 <p className="text-xs text-blue-600">
-                  Wallet: {formatCurrency(teams.find(t => t.id === selectedTeamId)?.wallet || 0)}
+                  Wallet: {formatIndianRupee(teams.find(t => t.id === selectedTeamId)?.wallet || 0)}
                 </p>
               </div>
             </div>

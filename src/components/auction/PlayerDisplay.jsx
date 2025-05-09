@@ -1,13 +1,10 @@
 // src/components/auction/PlayerDisplay.jsx
 import React from 'react';
 import Card from '../common/Card';
+import { formatIndianRupee } from '../../utils/currencyUtils';
 
 const PlayerDisplay = ({ player }) => {
   if (!player) return null;
-  
-  const formatCurrency = (amount) => {
-    return `$${amount.toLocaleString()}`;
-  };
 
   // Enhanced image rendering with proper error handling
   const renderPlayerImage = () => {
@@ -50,9 +47,14 @@ const PlayerDisplay = ({ player }) => {
               {renderPlayerImage()}
               
               <div className="text-center">
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                  {player.role || 'Player'}
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 mb-2">
+                  {player.playerType || 'Player'}
                 </span>
+                {player.isCapped && (
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 ml-1">
+                    {player.isCapped === 'capped' ? 'Capped' : 'Uncapped'}
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -64,7 +66,7 @@ const PlayerDisplay = ({ player }) => {
             <div className="grid grid-cols-2 gap-4 mb-6">
               <div className="bg-gray-50 p-4 rounded-lg">
                 <p className="text-sm text-gray-500">Base Price</p>
-                <p className="text-xl font-bold text-green-600">{formatCurrency(player.basePrice || 1000)}</p>
+                <p className="text-xl font-bold text-green-600">{formatIndianRupee(player.basePrice || 1000)}</p>
               </div>
               
               <div className="bg-gray-50 p-4 rounded-lg">
@@ -83,6 +85,13 @@ const PlayerDisplay = ({ player }) => {
             
             {/* Player Attributes */}
             <div className="space-y-4">
+              {player.specialization && (
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Specialization:</span>
+                  <span className="font-medium">{player.specialization}</span>
+                </div>
+              )}
+              
               {player.battingStyle && (
                 <div className="flex justify-between">
                   <span className="text-gray-500">Batting Style:</span>
@@ -90,10 +99,10 @@ const PlayerDisplay = ({ player }) => {
                 </div>
               )}
               
-              {player.bowlingStyle && (
+              {player.ballingType && (
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Bowling Style:</span>
-                  <span className="font-medium">{player.bowlingStyle}</span>
+                  <span className="text-gray-500">Bowling Type:</span>
+                  <span className="font-medium">{player.ballingType}</span>
                 </div>
               )}
               
@@ -112,6 +121,57 @@ const PlayerDisplay = ({ player }) => {
               )}
             </div>
             
+            {/* Player Statistics */}
+            <div className="mt-6 pt-6 border-t border-gray-200">
+              <h3 className="text-md font-medium text-gray-700 mb-4">Player Statistics</h3>
+              
+              {/* Batting Stats */}
+              <div className="mb-4">
+                <h4 className="text-sm font-medium text-blue-600 mb-2">Batting</h4>
+                <div className="grid grid-cols-4 gap-2">
+                  <div className="bg-blue-50 p-2 rounded text-center">
+                    <p className="text-xs text-gray-500">Innings</p>
+                    <p className="font-bold">{player.battingInnings || 0}</p>
+                  </div>
+                  <div className="bg-blue-50 p-2 rounded text-center">
+                    <p className="text-xs text-gray-500">Runs</p>
+                    <p className="font-bold">{player.runs || 0}</p>
+                  </div>
+                  <div className="bg-blue-50 p-2 rounded text-center">
+                    <p className="text-xs text-gray-500">Average</p>
+                    <p className="font-bold">{player.battingAverage?.toFixed(2) || '0.00'}</p>
+                  </div>
+                  <div className="bg-blue-50 p-2 rounded text-center">
+                    <p className="text-xs text-gray-500">Strike Rate</p>
+                    <p className="font-bold">{player.strikeRate?.toFixed(2) || '0.00'}</p>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Bowling Stats */}
+              <div>
+                <h4 className="text-sm font-medium text-green-600 mb-2">Bowling</h4>
+                <div className="grid grid-cols-4 gap-2">
+                  <div className="bg-green-50 p-2 rounded text-center">
+                    <p className="text-xs text-gray-500">Innings</p>
+                    <p className="font-bold">{player.ballingInnings || 0}</p>
+                  </div>
+                  <div className="bg-green-50 p-2 rounded text-center">
+                    <p className="text-xs text-gray-500">Wickets</p>
+                    <p className="font-bold">{player.wickets || 0}</p>
+                  </div>
+                  <div className="bg-green-50 p-2 rounded text-center">
+                    <p className="text-xs text-gray-500">Average</p>
+                    <p className="font-bold">{player.ballingAverage?.toFixed(2) || '0.00'}</p>
+                  </div>
+                  <div className="bg-green-50 p-2 rounded text-center">
+                    <p className="text-xs text-gray-500">Economy</p>
+                    <p className="font-bold">{player.economy?.toFixed(2) || '0.00'}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
             {/* Auction Result (if sold) */}
             {player.status === 'sold' && (
               <div className="mt-6 pt-6 border-t border-gray-200">
@@ -123,7 +183,7 @@ const PlayerDisplay = ({ player }) => {
                     </div>
                     <div>
                       <p className="text-sm text-green-600">Sold For</p>
-                      <p className="text-lg font-bold">{formatCurrency(player.soldAmount || 0)}</p>
+                      <p className="text-lg font-bold">{formatIndianRupee(player.soldAmount || 0)}</p>
                     </div>
                   </div>
                 </div>

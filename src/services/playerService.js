@@ -1,4 +1,3 @@
-// src/services/playerService.js
 import { 
     collection, 
     addDoc, 
@@ -15,11 +14,26 @@ import { db } from '../firebase/config';
 
 const playersCollection = collection(db, 'players');
 
-// Add a single player
+// Add a single player with updated fields
 export const addPlayer = async (playerData) => {
     try {
     const player = {
-        ...playerData,
+        name: playerData.name || '',
+        isCapped: playerData.isCapped || 'uncapped',
+        playerType: playerData.playerType || '',
+        specialization: playerData.specialization || '',
+        battingStyle: playerData.battingStyle || '',
+        ballingType: playerData.ballingType || '',
+        basePrice: playerData.basePrice || 1000,
+        battingInnings: playerData.battingInnings || 0,
+        runs: playerData.runs || 0,
+        battingAverage: playerData.battingAverage || 0,
+        strikeRate: playerData.strikeRate || 0,
+        ballingInnings: playerData.ballingInnings || 0,
+        wickets: playerData.wickets || 0,
+        ballingAverage: playerData.ballingAverage || 0,
+        economy: playerData.economy || 0,
+        imageUrl: playerData.imageUrl || '',
         status: 'available', // available, sold, unsold
         soldTo: null,
         soldAmount: 0,
@@ -34,14 +48,29 @@ export const addPlayer = async (playerData) => {
     }
 };
 
-// Add multiple players (bulk import)
+// Add multiple players (bulk import) with updated fields
 export const addPlayers = async (playersArray) => {
     try {
     const results = [];
     
     for (const playerData of playersArray) {
         const player = {
-        ...playerData,
+        name: playerData.name || '',
+        isCapped: playerData.isCapped || 'uncapped',
+        playerType: playerData.playerType || '',
+        specialization: playerData.specialization || '',
+        battingStyle: playerData.battingStyle || '',
+        ballingType: playerData.ballingType || '',
+        basePrice: playerData.basePrice || 1000,
+        battingInnings: playerData.battingInnings || 0,
+        runs: playerData.runs || 0,
+        battingAverage: playerData.battingAverage || 0,
+        strikeRate: playerData.strikeRate || 0,
+        ballingInnings: playerData.ballingInnings || 0,
+        wickets: playerData.wickets || 0,
+        ballingAverage: playerData.ballingAverage || 0,
+        economy: playerData.economy || 0,
+        imageUrl: playerData.imageUrl || '',
         status: 'available',
         soldTo: null,
         soldAmount: 0,
@@ -116,13 +145,36 @@ export const updatePlayer = async (playerId, playerData) => {
         throw new Error('Player not found');
     }
     
-    // Update only the fields that are provided
-    await updateDoc(playerRef, {
-        ...playerData,
+    // Create update object with all fields that are provided
+    const updateData = {
         updatedAt: serverTimestamp()
-    });
+    };
     
-    return { id: playerId, ...playerData };
+    // Add each field if it's provided in playerData
+    if (playerData.name !== undefined) updateData.name = playerData.name;
+    if (playerData.isCapped !== undefined) updateData.isCapped = playerData.isCapped;
+    if (playerData.playerType !== undefined) updateData.playerType = playerData.playerType;
+    if (playerData.specialization !== undefined) updateData.specialization = playerData.specialization;
+    if (playerData.battingStyle !== undefined) updateData.battingStyle = playerData.battingStyle;
+    if (playerData.ballingType !== undefined) updateData.ballingType = playerData.ballingType;
+    if (playerData.basePrice !== undefined) updateData.basePrice = playerData.basePrice;
+    if (playerData.battingInnings !== undefined) updateData.battingInnings = playerData.battingInnings;
+    if (playerData.runs !== undefined) updateData.runs = playerData.runs;
+    if (playerData.battingAverage !== undefined) updateData.battingAverage = playerData.battingAverage;
+    if (playerData.strikeRate !== undefined) updateData.strikeRate = playerData.strikeRate;
+    if (playerData.ballingInnings !== undefined) updateData.ballingInnings = playerData.ballingInnings;
+    if (playerData.wickets !== undefined) updateData.wickets = playerData.wickets;
+    if (playerData.ballingAverage !== undefined) updateData.ballingAverage = playerData.ballingAverage;
+    if (playerData.economy !== undefined) updateData.economy = playerData.economy;
+    if (playerData.imageUrl !== undefined) updateData.imageUrl = playerData.imageUrl;
+    if (playerData.status !== undefined) updateData.status = playerData.status;
+    if (playerData.soldTo !== undefined) updateData.soldTo = playerData.soldTo;
+    if (playerData.soldToTeam !== undefined) updateData.soldToTeam = playerData.soldToTeam;
+    if (playerData.soldAmount !== undefined) updateData.soldAmount = playerData.soldAmount;
+    
+    await updateDoc(playerRef, updateData);
+    
+    return { id: playerId, ...updateData };
     } catch (error) {
     console.error('Error updating player:', error);
     throw error;

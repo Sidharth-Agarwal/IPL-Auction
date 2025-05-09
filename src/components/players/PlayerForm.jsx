@@ -1,4 +1,3 @@
-// src/components/players/PlayerForm.jsx
 import React, { useState, useEffect } from 'react';
 import { addPlayer, updatePlayer, getPlayer } from '../../services/playerService';
 import Card from '../common/Card';
@@ -7,12 +6,25 @@ import ErrorMessage from '../common/ErrorMessage';
 import Loading from '../common/Loading';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '../../firebase/config';
+import { formatIndianRupee } from '../../utils/currencyUtils';
 
 const PlayerForm = ({ playerId = null, onSuccess = null, onCancel = null }) => {
   const initialFormData = {
     name: '',
-    role: '',
-    basePrice: 1000,
+    isCapped: 'uncapped', // Default to 'uncapped'
+    playerType: '',
+    specialization: '',
+    battingStyle: '',
+    ballingType: '',
+    basePrice: 1000, // Minimum_Bidding_Amount
+    battingInnings: 0,
+    runs: 0,
+    battingAverage: 0,
+    strikeRate: 0,
+    ballingInnings: 0,
+    wickets: 0,
+    ballingAverage: 0,
+    economy: 0,
     imageUrl: '',
     status: 'available',
     soldAmount: 0,
@@ -27,13 +39,41 @@ const PlayerForm = ({ playerId = null, onSuccess = null, onCancel = null }) => {
   const [previewUrl, setPreviewUrl] = useState('');
   const [imageFile, setImageFile] = useState(null);
   
-  // Role options
-  const roleOptions = [
+  // Player type options
+  const playerTypeOptions = [
     'Batsman',
     'Bowler',
     'All-Rounder',
-    'Wicket-Keeper',
-    'Captain'
+    'Wicket-Keeper'
+  ];
+  
+  // Specialization options
+  const specializationOptions = [
+    'Top-order Batsman',
+    'Middle-order Batsman',
+    'Finisher',
+    'Fast Bowler',
+    'Spinner',
+    'Pace All-rounder',
+    'Spin All-rounder'
+  ];
+  
+  // Batting style options
+  const battingStyleOptions = [
+    'Right-handed',
+    'Left-handed'
+  ];
+  
+  // Bowling type options
+  const ballingTypeOptions = [
+    'Right-arm Fast',
+    'Left-arm Fast',
+    'Right-arm Medium',
+    'Left-arm Medium',
+    'Right-arm Off Spin',
+    'Left-arm Orthodox',
+    'Right-arm Leg Spin',
+    'Left-arm Chinaman'
   ];
   
   // Status options
@@ -53,8 +93,20 @@ const PlayerForm = ({ playerId = null, onSuccess = null, onCancel = null }) => {
         const playerData = await getPlayer(playerId);
         setFormData({
           name: playerData.name || '',
-          role: playerData.role || '',
+          isCapped: playerData.isCapped || 'uncapped',
+          playerType: playerData.playerType || '',
+          specialization: playerData.specialization || '',
+          battingStyle: playerData.battingStyle || '',
+          ballingType: playerData.ballingType || '',
           basePrice: playerData.basePrice || 1000,
+          battingInnings: playerData.battingInnings || 0,
+          runs: playerData.runs || 0,
+          battingAverage: playerData.battingAverage || 0,
+          strikeRate: playerData.strikeRate || 0,
+          ballingInnings: playerData.ballingInnings || 0,
+          wickets: playerData.wickets || 0,
+          ballingAverage: playerData.ballingAverage || 0,
+          economy: playerData.economy || 0,
           imageUrl: playerData.imageUrl || '',
           status: playerData.status || 'available',
           soldAmount: playerData.soldAmount || 0,
@@ -257,37 +309,131 @@ const PlayerForm = ({ playerId = null, onSuccess = null, onCancel = null }) => {
           )}
         </div>
         
-        {/* Player Role */}
+        {/* Capped/Uncapped */}
         <div>
-          <label htmlFor="role" className="block text-sm font-medium text-gray-700 mb-1">
-            Role
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Capped/Uncapped
+          </label>
+          <div className="mt-1 flex items-center space-x-4">
+            <div className="flex items-center">
+              <input
+                id="capped"
+                name="isCapped"
+                type="radio"
+                value="capped"
+                checked={formData.isCapped === 'capped'}
+                onChange={handleChange}
+                className="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300"
+              />
+              <label htmlFor="capped" className="ml-2 block text-sm text-gray-700">
+                Capped
+              </label>
+            </div>
+            <div className="flex items-center">
+              <input
+                id="uncapped"
+                name="isCapped"
+                type="radio"
+                value="uncapped"
+                checked={formData.isCapped === 'uncapped'}
+                onChange={handleChange}
+                className="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300"
+              />
+              <label htmlFor="uncapped" className="ml-2 block text-sm text-gray-700">
+                Uncapped
+              </label>
+            </div>
+          </div>
+        </div>
+        
+        {/* Player Type */}
+        <div>
+          <label htmlFor="playerType" className="block text-sm font-medium text-gray-700 mb-1">
+            Player Type
           </label>
           <select
-            id="role"
-            name="role"
+            id="playerType"
+            name="playerType"
             className={`block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm
-              ${formErrors.role ? 'border-red-300' : 'border-gray-300'}`}
-            value={formData.role}
+              ${formErrors.playerType ? 'border-red-300' : 'border-gray-300'}`}
+            value={formData.playerType}
             onChange={handleChange}
           >
-            <option value="">Select Role</option>
-            {roleOptions.map((role, index) => (
-              <option key={index} value={role}>{role}</option>
+            <option value="">Select Player Type</option>
+            {playerTypeOptions.map((type, index) => (
+              <option key={index} value={type}>{type}</option>
             ))}
           </select>
-          {formErrors.role && (
-            <p className="mt-1 text-sm text-red-600">{formErrors.role}</p>
-          )}
+        </div>
+        
+        {/* Specialization */}
+        <div>
+          <label htmlFor="specialization" className="block text-sm font-medium text-gray-700 mb-1">
+            Specialization
+          </label>
+          <select
+            id="specialization"
+            name="specialization"
+            className={`block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm
+              ${formErrors.specialization ? 'border-red-300' : 'border-gray-300'}`}
+            value={formData.specialization}
+            onChange={handleChange}
+          >
+            <option value="">Select Specialization</option>
+            {specializationOptions.map((spec, index) => (
+              <option key={index} value={spec}>{spec}</option>
+            ))}
+          </select>
+        </div>
+        
+        {/* Batting Style */}
+        <div>
+          <label htmlFor="battingStyle" className="block text-sm font-medium text-gray-700 mb-1">
+            Batting Style
+          </label>
+          <select
+            id="battingStyle"
+            name="battingStyle"
+            className={`block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm
+              ${formErrors.battingStyle ? 'border-red-300' : 'border-gray-300'}`}
+            value={formData.battingStyle}
+            onChange={handleChange}
+          >
+            <option value="">Select Batting Style</option>
+            {battingStyleOptions.map((style, index) => (
+              <option key={index} value={style}>{style}</option>
+            ))}
+          </select>
+        </div>
+        
+        {/* Balling Type */}
+        <div>
+          <label htmlFor="ballingType" className="block text-sm font-medium text-gray-700 mb-1">
+            Bowling Type
+          </label>
+          <select
+            id="ballingType"
+            name="ballingType"
+            className={`block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm
+              ${formErrors.ballingType ? 'border-red-300' : 'border-gray-300'}`}
+            value={formData.ballingType}
+            onChange={handleChange}
+          >
+            <option value="">Select Bowling Type</option>
+            {ballingTypeOptions.map((type, index) => (
+              <option key={index} value={type}>{type}</option>
+            ))}
+          </select>
         </div>
         
         {/* Base Price */}
         <div>
           <label htmlFor="basePrice" className="block text-sm font-medium text-gray-700 mb-1">
-            Base Price
+            Minimum Bidding Amount
           </label>
           <div className="relative rounded-md shadow-sm">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <span className="text-gray-500 sm:text-sm">$</span>
+              <span className="text-gray-500 sm:text-sm">₹</span>
             </div>
             <input
               type="number"
@@ -305,59 +451,151 @@ const PlayerForm = ({ playerId = null, onSuccess = null, onCancel = null }) => {
             <p className="mt-1 text-sm text-red-600">{formErrors.basePrice}</p>
           ) : (
             <p className="mt-1 text-sm text-gray-500">
-              Default base price is 1,000 credits
+              Default base price is ₹1,000
             </p>
           )}
         </div>
         
-        {/* Player Status (only show when editing) */}
-        {isEditing && (
+        {/* Stats Section */}
+        <div className="border border-gray-200 rounded-md p-4 space-y-4">
+          <h3 className="text-md font-medium text-gray-700">Player Statistics</h3>
+          
+          {/* Batting Stats */}
           <div>
-            <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-1">
-              Status
-            </label>
-            <select
-              id="status"
-              name="status"
-              className={`block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm
-                ${formErrors.status ? 'border-red-300' : 'border-gray-300'}`}
-              value={formData.status}
-              onChange={handleChange}
-            >
-              {statusOptions.map((status, index) => (
-                <option key={index} value={status}>{status}</option>
-              ))}
-            </select>
-          </div>
-        )}
-        
-        {/* Sold Amount (only show when status is 'sold') */}
-        {isEditing && formData.status === 'sold' && (
-          <div>
-            <label htmlFor="soldAmount" className="block text-sm font-medium text-gray-700 mb-1">
-              Sold Amount
-            </label>
-            <div className="relative rounded-md shadow-sm">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <span className="text-gray-500 sm:text-sm">$</span>
+            <h4 className="text-sm font-medium text-gray-700 mb-2">Batting Statistics</h4>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label htmlFor="battingInnings" className="block text-sm font-medium text-gray-700 mb-1">
+                  Innings
+                </label>
+                <input
+                  type="number"
+                  id="battingInnings"
+                  name="battingInnings"
+                  min="0"
+                  className="block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm border-gray-300"
+                  value={formData.battingInnings}
+                  onChange={handleChange}
+                />
               </div>
-              <input
-                type="number"
-                id="soldAmount"
-                name="soldAmount"
-                min="0"
-                step="100000"
-                className={`block w-full pl-7 pr-12 rounded-md focus:ring-blue-500 focus:border-blue-500 sm:text-sm
-                  ${formErrors.soldAmount ? 'border-red-300' : 'border-gray-300'}`}
-                value={formData.soldAmount}
-                onChange={handleChange}
-              />
+              
+              <div>
+                <label htmlFor="runs" className="block text-sm font-medium text-gray-700 mb-1">
+                  Runs
+                </label>
+                <input
+                  type="number"
+                  id="runs"
+                  name="runs"
+                  min="0"
+                  className="block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm border-gray-300"
+                  value={formData.runs}
+                  onChange={handleChange}
+                />
+              </div>
+              
+              <div>
+                <label htmlFor="battingAverage" className="block text-sm font-medium text-gray-700 mb-1">
+                  Average
+                </label>
+                <input
+                  type="number"
+                  id="battingAverage"
+                  name="battingAverage"
+                  min="0"
+                  step="0.01"
+                  className="block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm border-gray-300"
+                  value={formData.battingAverage}
+                  onChange={handleChange}
+                />
+              </div>
+              
+              <div>
+                <label htmlFor="strikeRate" className="block text-sm font-medium text-gray-700 mb-1">
+                  Strike Rate
+                </label>
+                <input
+                  type="number"
+                  id="strikeRate"
+                  name="strikeRate"
+                  min="0"
+                  step="0.01"
+                  className="block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm border-gray-300"
+                  value={formData.strikeRate}
+                  onChange={handleChange}
+                />
+              </div>
             </div>
-            {formErrors.soldAmount && (
-              <p className="mt-1 text-sm text-red-600">{formErrors.soldAmount}</p>
-            )}
           </div>
-        )}
+          
+          {/* Bowling Stats */}
+          <div>
+            <h4 className="text-sm font-medium text-gray-700 mb-2">Bowling Statistics</h4>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label htmlFor="ballingInnings" className="block text-sm font-medium text-gray-700 mb-1">
+                  Innings
+                </label>
+                <input
+                  type="number"
+                  id="ballingInnings"
+                  name="ballingInnings"
+                  min="0"
+                  className="block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm border-gray-300"
+                  value={formData.ballingInnings}
+                  onChange={handleChange}
+                />
+              </div>
+              
+              <div>
+                <label htmlFor="wickets" className="block text-sm font-medium text-gray-700 mb-1">
+                  Wickets
+                </label>
+                <input
+                  type="number"
+                  id="wickets"
+                  name="wickets"
+                  min="0"
+                  className="block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm border-gray-300"
+                  value={formData.wickets}
+                  onChange={handleChange}
+                />
+              </div>
+              
+              <div>
+                <label htmlFor="ballingAverage" className="block text-sm font-medium text-gray-700 mb-1">
+                  Average
+                </label>
+                <input
+                  type="number"
+                  id="ballingAverage"
+                  name="ballingAverage"
+                  min="0"
+                  step="0.01"
+                  className="block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm border-gray-300"
+                  value={formData.ballingAverage}
+                  onChange={handleChange}
+                />
+              </div>
+              
+              <div>
+                <label htmlFor="economy" className="block text-sm font-medium text-gray-700 mb-1">
+                  Economy
+                </label>
+                <input
+                  type="number"
+                  id="economy"
+                  name="economy"
+                  min="0"
+                  step="0.01"
+                  className="block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm border-gray-300"
+                  value={formData.economy}
+                  onChange={handleChange}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
         
         {/* Player Image */}
         <div>
@@ -404,6 +642,55 @@ const PlayerForm = ({ playerId = null, onSuccess = null, onCancel = null }) => {
             </div>
           )}
         </div>
+        
+        {/* Player Status (only show when editing) */}
+        {isEditing && (
+          <div>
+            <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-1">
+              Status
+            </label>
+            <select
+              id="status"
+              name="status"
+              className={`block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm
+                ${formErrors.status ? 'border-red-300' : 'border-gray-300'}`}
+              value={formData.status}
+              onChange={handleChange}
+            >
+              {statusOptions.map((status, index) => (
+                <option key={index} value={status}>{status}</option>
+              ))}
+            </select>
+          </div>
+        )}
+        
+        {/* Sold Amount (only show when status is 'sold') */}
+        {isEditing && formData.status === 'sold' && (
+          <div>
+            <label htmlFor="soldAmount" className="block text-sm font-medium text-gray-700 mb-1">
+              Sold Amount
+            </label>
+            <div className="relative rounded-md shadow-sm">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <span className="text-gray-500 sm:text-sm">₹</span>
+              </div>
+              <input
+                type="number"
+                id="soldAmount"
+                name="soldAmount"
+                min="0"
+                step="100000"
+                className={`block w-full pl-7 pr-12 rounded-md focus:ring-blue-500 focus:border-blue-500 sm:text-sm
+                  ${formErrors.soldAmount ? 'border-red-300' : 'border-gray-300'}`}
+                value={formData.soldAmount}
+                onChange={handleChange}
+              />
+            </div>
+            {formErrors.soldAmount && (
+              <p className="mt-1 text-sm text-red-600">{formErrors.soldAmount}</p>
+            )}
+          </div>
+        )}
         
         {/* General Form Error */}
         {formErrors._general && (

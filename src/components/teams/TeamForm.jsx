@@ -1,7 +1,6 @@
 // src/components/teams/TeamForm.jsx
 import React, { useState, useEffect } from 'react';
 import { createTeam, updateTeam, getTeam } from '../../services/teamService';
-import Card from '../common/Card';
 import Button from '../common/Button';
 import ErrorMessage from '../common/ErrorMessage';
 import Loading from '../common/Loading';
@@ -11,7 +10,11 @@ import { storage } from '../../firebase/config';
 const TeamForm = ({ teamId = null, onSuccess = null, onCancel = null }) => {
   const initialFormData = {
     name: '',
-    owner: '',
+    owner1: '',
+    owner2: '',
+    owner3: '',
+    captain: '',
+    womanCaptain: '',
     wallet: 10000,
     logoUrl: ''
   };
@@ -34,7 +37,11 @@ const TeamForm = ({ teamId = null, onSuccess = null, onCancel = null }) => {
         const teamData = await getTeam(teamId);
         setFormData({
           name: teamData.name || '',
-          owner: teamData.owner || '',
+          owner1: teamData.owner1 || '',
+          owner2: teamData.owner2 || '',
+          owner3: teamData.owner3 || '',
+          captain: teamData.captain || '',
+          womanCaptain: teamData.womanCaptain || '',
           wallet: teamData.wallet || 10000,
           logoUrl: teamData.logoUrl || ''
         });
@@ -208,8 +215,8 @@ const TeamForm = ({ teamId = null, onSuccess = null, onCancel = null }) => {
   }
 
   return (
-    <Card title={isEditing ? 'Edit Team' : 'Create New Team'}>
-      <form onSubmit={handleSubmit} className="space-y-4 p-4">
+    <div className="py-2">
+      <form onSubmit={handleSubmit} className="space-y-3 px-1">
         {/* Team Name */}
         <div>
           <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
@@ -230,23 +237,79 @@ const TeamForm = ({ teamId = null, onSuccess = null, onCancel = null }) => {
           )}
         </div>
         
-        {/* Team Owner */}
+        {/* Franchise Owner 1 */}
         <div>
-          <label htmlFor="owner" className="block text-sm font-medium text-gray-700 mb-1">
-            Team Owner
+          <label htmlFor="owner1" className="block text-sm font-medium text-gray-700 mb-1">
+            Owner 1
           </label>
           <input
             type="text"
-            id="owner"
-            name="owner"
-            className={`block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm
-              ${formErrors.owner ? 'border-red-300' : 'border-gray-300'}`}
-            value={formData.owner}
+            id="owner1"
+            name="owner1"
+            className="block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm border-gray-300"
+            value={formData.owner1}
             onChange={handleChange}
           />
-          {formErrors.owner && (
-            <p className="mt-1 text-sm text-red-600">{formErrors.owner}</p>
-          )}
+        </div>
+        
+        {/* Franchise Owner 2 */}
+        <div>
+          <label htmlFor="owner2" className="block text-sm font-medium text-gray-700 mb-1">
+            Owner 2
+          </label>
+          <input
+            type="text"
+            id="owner2"
+            name="owner2"
+            className="block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm border-gray-300"
+            value={formData.owner2}
+            onChange={handleChange}
+          />
+        </div>
+        
+        {/* Franchise Owner 3 */}
+        <div>
+          <label htmlFor="owner3" className="block text-sm font-medium text-gray-700 mb-1">
+            Owner 3
+          </label>
+          <input
+            type="text"
+            id="owner3"
+            name="owner3"
+            className="block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm border-gray-300"
+            value={formData.owner3}
+            onChange={handleChange}
+          />
+        </div>
+        
+        {/* Team Captain */}
+        <div>
+          <label htmlFor="captain" className="block text-sm font-medium text-gray-700 mb-1">
+            Team Captain
+          </label>
+          <input
+            type="text"
+            id="captain"
+            name="captain"
+            className="block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm border-gray-300"
+            value={formData.captain}
+            onChange={handleChange}
+          />
+        </div>
+        
+        {/* Woman Captain */}
+        <div>
+          <label htmlFor="womanCaptain" className="block text-sm font-medium text-gray-700 mb-1">
+            Woman Captain
+          </label>
+          <input
+            type="text"
+            id="womanCaptain"
+            name="womanCaptain"
+            className="block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm border-gray-300"
+            value={formData.womanCaptain}
+            onChange={handleChange}
+          />
         </div>
         
         {/* Wallet Amount */}
@@ -256,7 +319,7 @@ const TeamForm = ({ teamId = null, onSuccess = null, onCancel = null }) => {
           </label>
           <div className="relative rounded-md shadow-sm">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <span className="text-gray-500 sm:text-sm">$</span>
+              <span className="text-gray-500 sm:text-sm">₹</span>
             </div>
             <input
               type="number"
@@ -273,8 +336,8 @@ const TeamForm = ({ teamId = null, onSuccess = null, onCancel = null }) => {
           {formErrors.wallet ? (
             <p className="mt-1 text-sm text-red-600">{formErrors.wallet}</p>
           ) : (
-            <p className="mt-1 text-sm text-gray-500">
-              Default wallet amount is 10,000 credits
+            <p className="mt-1 text-xs text-gray-500">
+              Default wallet amount is ₹10,000
             </p>
           )}
         </div>
@@ -306,7 +369,7 @@ const TeamForm = ({ teamId = null, onSuccess = null, onCancel = null }) => {
                 <img 
                   src={previewUrl} 
                   alt="Logo Preview" 
-                  className="h-20 w-20 rounded-full object-cover border border-gray-200"
+                  className="h-16 w-16 rounded-full object-cover border border-gray-200"
                   onClick={() => window.open(previewUrl, '_blank')}
                   onError={(e) => {
                     e.target.onerror = null;
@@ -317,9 +380,9 @@ const TeamForm = ({ teamId = null, onSuccess = null, onCancel = null }) => {
               <button
                 type="button"
                 onClick={handleRemoveImage}
-                className="bg-red-500 text-white px-3 py-1 rounded-md hover:bg-red-600 text-sm"
+                className="bg-red-500 text-white px-2 py-1 rounded-md hover:bg-red-600 text-xs"
               >
-                Remove Logo
+                Remove
               </button>
             </div>
           )}
@@ -331,12 +394,13 @@ const TeamForm = ({ teamId = null, onSuccess = null, onCancel = null }) => {
         )}
         
         {/* Submit and Reset Buttons */}
-        <div className="flex justify-end space-x-2 pt-4">
+        <div className="flex justify-end space-x-2 pt-3">
           <Button
             type="button"
             variant="secondary"
             onClick={handleReset}
             disabled={loading}
+            size="sm"
           >
             {isEditing ? 'Cancel' : 'Reset'}
           </Button>
@@ -345,12 +409,13 @@ const TeamForm = ({ teamId = null, onSuccess = null, onCancel = null }) => {
             variant="primary"
             loading={loading}
             loadingText={isEditing ? 'Updating...' : 'Creating...'}
+            size="sm"
           >
-            {isEditing ? 'Update Team' : 'Create Team'}
+            {isEditing ? 'Update' : 'Create'}
           </Button>
         </div>
       </form>
-    </Card>
+    </div>
   );
 };
 

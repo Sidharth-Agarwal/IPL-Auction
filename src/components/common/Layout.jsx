@@ -27,7 +27,7 @@ const Layout = ({ children, title = 'Cricket Auction App' }) => {
             {/* Logo and title */}
             <div className="flex">
               <div className="flex-shrink-0 flex items-center">
-                <span className="text-blue-600 font-bold text-xl">Cricket Auction</span>
+                <span className="text-blue-600 font-bold text-xl">ADA Premiere League</span>
               </div>
             </div>
             

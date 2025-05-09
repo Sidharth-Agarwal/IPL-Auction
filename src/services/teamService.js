@@ -1,4 +1,3 @@
-// src/services/teamService.js
 import { 
     collection, 
     addDoc, 
@@ -17,7 +16,14 @@ const teamsCollection = collection(db, 'teams');
 export const createTeam = async (teamData) => {
     try {
     const team = {
-        ...teamData,
+        name: teamData.name,
+        owner1: teamData.owner1 || '',
+        owner2: teamData.owner2 || '',
+        owner3: teamData.owner3 || '',
+        captain: teamData.captain || '',
+        womanCaptain: teamData.womanCaptain || '',
+        wallet: teamData.wallet || 10000,
+        logoUrl: teamData.logoUrl || '',
         players: [],
         createdAt: serverTimestamp()
     };
@@ -72,11 +78,22 @@ export const updateTeam = async (teamId, teamData) => {
         throw new Error('Team not found');
     }
     
-    // Update only the fields that are provided
-    await updateDoc(teamRef, {
-        ...teamData,
+    // Prepare the update object with only the fields that are provided
+    const updateData = {
         updatedAt: serverTimestamp()
-    });
+    };
+    
+    // Add fields that are provided
+    if (teamData.name !== undefined) updateData.name = teamData.name;
+    if (teamData.owner1 !== undefined) updateData.owner1 = teamData.owner1;
+    if (teamData.owner2 !== undefined) updateData.owner2 = teamData.owner2;
+    if (teamData.owner3 !== undefined) updateData.owner3 = teamData.owner3;
+    if (teamData.captain !== undefined) updateData.captain = teamData.captain;
+    if (teamData.womanCaptain !== undefined) updateData.womanCaptain = teamData.womanCaptain;
+    if (teamData.wallet !== undefined) updateData.wallet = teamData.wallet;
+    if (teamData.logoUrl !== undefined) updateData.logoUrl = teamData.logoUrl;
+    
+    await updateDoc(teamRef, updateData);
     
     return { id: teamId, ...teamData };
     } catch (error) {

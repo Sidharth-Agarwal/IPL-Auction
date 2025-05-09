@@ -6,6 +6,7 @@ import Card from '../common/Card';
 import Button from '../common/Button';
 import Loading from '../common/Loading';
 import ErrorMessage from '../common/ErrorMessage';
+import { formatIndianRupee } from '../../utils/currencyUtils';
 
 const ResultsView = () => {
   const [players, setPlayers] = useState([]);
@@ -64,10 +65,6 @@ const ResultsView = () => {
   
   const getUnsoldPlayers = () => {
     return players.filter(player => player.status === 'unsold');
-  };
-  
-  const formatCurrency = (amount) => {
-    return `$${amount.toLocaleString()}`;
   };
 
   // Helper function to render player image
@@ -128,17 +125,57 @@ const ResultsView = () => {
         return;
       }
       
-      // Prepare CSV content
-      const headers = ['Player Name', 'Role', 'Price', 'Status'];
-      let csvContent = headers.join(',') + '\n';
+      // Prepare CSV content with team details in header
+      let csvContent = 'Team Information\n';
+      csvContent += `Team Name,${team.name}\n`;
+      csvContent += `Owners,${[team.owner1, team.owner2, team.owner3].filter(Boolean).join(' / ') || 'N/A'}\n`;
+      csvContent += `Team Captain,${team.captain || 'N/A'}\n`;
+      csvContent += `Woman Captain,${team.womanCaptain || 'N/A'}\n`;
+      csvContent += `Total Budget,${formatIndianRupee(team.wallet + getTeamSpent(team.id), false)}\n`;
+      csvContent += `Remaining Budget,${formatIndianRupee(team.wallet, false)}\n`;
+      csvContent += `Players Acquired,${teamPlayers.length}\n\n`;
+      
+      // Add player details with all columns
+      const headers = [
+        'Name',
+        'Capped/Uncapped',
+        'Player_Type',
+        'Specialization',
+        'Batting_Style',
+        'Balling_Type',
+        'Minimum_Bidding_Amount',
+        'Batting_Innings',
+        'Runs',
+        'Batting_Average',
+        'Strike_Rate',
+        'Balling_innings',
+        'Wickets',
+        'Balling_Average',
+        'Economy',
+        'Sold_Amount'
+      ];
+      
+      csvContent += headers.join(',') + '\n';
       
       // Add player data rows
       teamPlayers.forEach(player => {
         const row = [
-          `"${player.name}"`, // Add quotes to handle commas in names
-          `"${player.role || 'N/A'}"`,
-          player.soldAmount || 0,
-          `"${player.status || 'available'}"`
+          `"${player.name || ''}"`,
+          `"${player.isCapped || 'uncapped'}"`,
+          `"${player.playerType || ''}"`,
+          `"${player.specialization || ''}"`,
+          `"${player.battingStyle || ''}"`,
+          `"${player.ballingType || ''}"`,
+          player.basePrice || 1000,
+          player.battingInnings || 0,
+          player.runs || 0,
+          player.battingAverage || 0,
+          player.strikeRate || 0,
+          player.ballingInnings || 0,
+          player.wickets || 0,
+          player.ballingAverage || 0,
+          player.economy || 0,
+          player.soldAmount || 0
         ];
         csvContent += row.join(',') + '\n';
       });
@@ -174,8 +211,32 @@ const ResultsView = () => {
         return;
       }
       
-      // Prepare CSV content
-      const headers = ['Team Name', 'Player Name', 'Role', 'Price'];
+      // Prepare CSV content with all headers
+      const headers = [
+        'Team Name', 
+        'Owner 1', 
+        'Owner 2', 
+        'Owner 3', 
+        'Team Captain', 
+        'Woman Captain',
+        'Name',
+        'Capped/Uncapped',
+        'Player_Type',
+        'Specialization',
+        'Batting_Style',
+        'Balling_Type',
+        'Minimum_Bidding_Amount',
+        'Batting_Innings',
+        'Runs',
+        'Batting_Average',
+        'Strike_Rate',
+        'Balling_innings',
+        'Wickets',
+        'Balling_Average',
+        'Economy',
+        'Sold_Amount'
+      ];
+      
       let csvContent = headers.join(',') + '\n';
       
       // Add data for each team and their players
@@ -186,8 +247,26 @@ const ResultsView = () => {
           teamPlayers.forEach(player => {
             const row = [
               `"${team.name}"`,
-              `"${player.name}"`,
-              `"${player.role || 'N/A'}"`,
+              `"${team.owner1 || ''}"`,
+              `"${team.owner2 || ''}"`,
+              `"${team.owner3 || ''}"`,
+              `"${team.captain || ''}"`,
+              `"${team.womanCaptain || ''}"`,
+              `"${player.name || ''}"`,
+              `"${player.isCapped || 'uncapped'}"`,
+              `"${player.playerType || ''}"`,
+              `"${player.specialization || ''}"`,
+              `"${player.battingStyle || ''}"`,
+              `"${player.ballingType || ''}"`,
+              player.basePrice || 1000,
+              player.battingInnings || 0,
+              player.runs || 0,
+              player.battingAverage || 0,
+              player.strikeRate || 0,
+              player.ballingInnings || 0,
+              player.wickets || 0,
+              player.ballingAverage || 0,
+              player.economy || 0,
               player.soldAmount || 0
             ];
             csvContent += row.join(',') + '\n';
@@ -247,7 +326,7 @@ const ResultsView = () => {
             <div className="bg-purple-50 p-4 rounded-lg text-center">
               <p className="text-sm text-purple-600">Total Amount Spent</p>
               <p className="text-2xl font-bold text-purple-800">
-                {formatCurrency(getSoldPlayers().reduce((total, player) => total + (player.soldAmount || 0), 0))}
+                {formatIndianRupee(getSoldPlayers().reduce((total, player) => total + (player.soldAmount || 0), 0))}
               </p>
             </div>
           </div>
@@ -317,6 +396,13 @@ const ResultsView = () => {
                     const teamPlayers = getTeamPlayers(team.id);
                     const spent = getTeamSpent(team.id);
                     
+                    // Helper to display team ownership details properly
+                    const displayOwners = () => {
+                      const owners = [team.owner1, team.owner2, team.owner3].filter(Boolean);
+                      if (owners.length === 0) return 'No owners specified';
+                      return owners.join(', ');
+                    };
+                    
                     return (
                       <Card key={team.id} className="border border-gray-200">
                         <div className="p-4">
@@ -324,10 +410,27 @@ const ResultsView = () => {
                             {renderTeamLogo(team)}
                             <div>
                               <h3 className="text-xl font-bold">{team.name}</h3>
-                              <p className="text-gray-500">{team.owner || 'No owner specified'}</p>
+                              <p className="text-gray-500">{displayOwners()}</p>
                             </div>
                           </div>
                           
+                          {/* Team Leadership Information */}
+                          {(team.captain || team.womanCaptain) && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-4">
+                              {team.captain && (
+                                <div className="bg-indigo-50 p-2 rounded-lg text-sm">
+                                  <span className="text-indigo-600 font-medium">Captain:</span> {team.captain}
+                                </div>
+                              )}
+                              {team.womanCaptain && (
+                                <div className="bg-pink-50 p-2 rounded-lg text-sm">
+                                  <span className="text-pink-600 font-medium">Woman Captain:</span> {team.womanCaptain}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          
+                          {/* Team Stats */}
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                             <div className="bg-blue-50 p-3 rounded-lg text-center">
                               <p className="text-xs text-blue-600">Players Acquired</p>
@@ -336,12 +439,12 @@ const ResultsView = () => {
                             
                             <div className="bg-green-50 p-3 rounded-lg text-center">
                               <p className="text-xs text-green-600">Total Spent</p>
-                              <p className="text-lg font-bold text-green-800">{formatCurrency(spent)}</p>
+                              <p className="text-lg font-bold text-green-800">{formatIndianRupee(spent)}</p>
                             </div>
                             
                             <div className="bg-yellow-50 p-3 rounded-lg text-center">
                               <p className="text-xs text-yellow-600">Remaining Budget</p>
-                              <p className="text-lg font-bold text-yellow-800">{formatCurrency(team.wallet || 0)}</p>
+                              <p className="text-lg font-bold text-yellow-800">{formatIndianRupee(team.wallet || 0)}</p>
                             </div>
                           </div>
                           
@@ -370,7 +473,7 @@ const ResultsView = () => {
                                   <thead className="bg-gray-50">
                                     <tr>
                                       <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
+                                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
                                       <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Price</th>
                                     </tr>
                                   </thead>
@@ -380,11 +483,20 @@ const ResultsView = () => {
                                         <td className="px-4 py-2 whitespace-nowrap">
                                           <div className="flex items-center">
                                             {renderPlayerImage(player, "h-6 w-6 rounded-full mr-2")}
-                                            <span className="text-sm font-medium text-gray-900">{player.name}</span>
+                                            <div>
+                                              <span className="text-sm font-medium text-gray-900">{player.name}</span>
+                                              <div className="text-xs text-gray-500">
+                                                {player.isCapped === 'capped' ? (
+                                                  <span className="px-1.5 py-0.5 bg-green-100 text-green-800 rounded-full text-xs">C</span>
+                                                ) : (
+                                                  <span className="px-1.5 py-0.5 bg-gray-100 text-gray-800 rounded-full text-xs">U</span>
+                                                )}
+                                              </div>
+                                            </div>
                                           </div>
                                         </td>
-                                        <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">{player.role || 'N/A'}</td>
-                                        <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-green-600 font-medium">{formatCurrency(player.soldAmount || 0)}</td>
+                                        <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">{player.playerType || 'N/A'}</td>
+                                        <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-green-600 font-medium">{formatIndianRupee(player.soldAmount || 0)}</td>
                                       </tr>
                                     ))}
                                   </tbody>
@@ -403,7 +515,7 @@ const ResultsView = () => {
             </div>
           )}
           
-          {/* Players Tab */}
+          {/* Players Tab - Updated with new fields */}
           {activeTab === 'players' && (
             <div>
               {players.length === 0 ? (
@@ -413,48 +525,89 @@ const ResultsView = () => {
               ) : (
                 <div>
                   <div className="bg-white shadow overflow-hidden rounded-lg">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Player</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Team</th>
-                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {players.map(player => (
-                          <tr key={player.id} className="hover:bg-gray-50">
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="flex items-center">
-                                {renderPlayerImage(player)}
-                                <div className="text-sm font-medium text-gray-900">{player.name}</div>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{player.role || 'N/A'}</td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                                ${player.status === 'sold' ? 'bg-green-100 text-green-800' : 
-                                player.status === 'unsold' ? 'bg-red-100 text-red-800' : 
-                                'bg-blue-100 text-blue-800'}`}>
-                                {player.status || 'available'}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {player.soldTo ? getTeamName(player.soldTo) : '-'}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
-                              {player.status === 'sold' ? (
-                                <span className="text-green-600 font-medium">{formatCurrency(player.soldAmount || 0)}</span>
-                              ) : (
-                                <span className="text-gray-500">{formatCurrency(player.basePrice || 0)}</span>
-                              )}
-                            </td>
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Player</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Specialization</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Batting</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Bowling</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Team</th>
+                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {players.map(player => (
+                            <tr key={player.id} className="hover:bg-gray-50">
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="flex items-center">
+                                  {renderPlayerImage(player)}
+                                  <div>
+                                    <div className="text-sm font-medium text-gray-900">{player.name}</div>
+                                    <div className="text-xs text-gray-500">
+                                      {player.isCapped === 'capped' ? (
+                                        <span className="px-1.5 py-0.5 bg-green-100 text-green-800 rounded-full text-xs">Capped</span>
+                                      ) : (
+                                        <span className="px-1.5 py-0.5 bg-gray-100 text-gray-800 rounded-full text-xs">Uncapped</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="text-sm text-gray-500">{player.playerType || 'N/A'}</div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="text-sm text-gray-500">{player.specialization || 'N/A'}</div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="text-xs text-gray-500">
+                                  <div>{player.battingStyle || 'N/A'}</div>
+                                  {player.battingAverage > 0 && (
+                                    <div>Avg: {player.battingAverage.toFixed(2)}</div>
+                                  )}
+                                  {player.strikeRate > 0 && (
+                                    <div>SR: {player.strikeRate.toFixed(2)}</div>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="text-xs text-gray-500">
+                                  <div>{player.ballingType || 'N/A'}</div>
+                                  {player.ballingAverage > 0 && (
+                                    <div>Avg: {player.ballingAverage.toFixed(2)}</div>
+                                  )}
+                                  {player.economy > 0 && (
+                                    <div>Econ: {player.economy.toFixed(2)}</div>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                  ${player.status === 'sold' ? 'bg-green-100 text-green-800' : 
+                                   player.status === 'unsold' ? 'bg-red-100 text-red-800' : 
+                                   'bg-blue-100 text-blue-800'}`}>
+                                  {player.status || 'available'}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {player.status === 'sold' ? (player.soldToTeam || '-') : '-'}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
+                                {player.status === 'sold' ? (
+                                  <span className="text-green-600 font-medium">{formatIndianRupee(player.soldAmount || 0)}</span>
+                                ) : (
+                                  <span className="text-gray-500">{formatIndianRupee(player.basePrice || 0)}</span>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 </div>
               )}

@@ -32,7 +32,7 @@ const TeamList = () => {
       const term = searchTerm.toLowerCase();
       const filtered = teams.filter(
         team => team.name.toLowerCase().includes(term) || 
-                (team.owner && team.owner.toLowerCase().includes(term))
+                ([team.owner1, team.owner2, team.owner3].filter(Boolean).join(' ').toLowerCase().includes(term))
       );
       setFilteredTeams(filtered);
     }
@@ -170,8 +170,8 @@ const TeamList = () => {
       <Modal
         isOpen={showAddModal}
         onClose={handleFormCancel}
-        title={editingTeamId ? "Edit Team" : "Add New Team"}
-        size="lg"
+        title={editingTeamId ? "Edit Team" : "Add Team"}
+        size="md"
       >
         <TeamForm 
           teamId={editingTeamId} 

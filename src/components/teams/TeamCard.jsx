@@ -2,17 +2,21 @@
 import React from 'react';
 import Card from '../common/Card';
 import Button from '../common/Button';
+import { formatIndianRupee } from '../../utils/currencyUtils';
 
 const TeamCard = ({ team, onEdit }) => {
   if (!team) return null;
   
-  const formatCurrency = (amount) => {
-    return `$${amount.toLocaleString()}`;
+  // Helper to display team ownership details properly
+  const displayOwners = () => {
+    const owners = [team.owner1, team.owner2, team.owner3].filter(Boolean);
+    if (owners.length === 0) return 'No owners specified';
+    return owners.join(', ');
   };
   
   return (
     <Card className="hover:shadow-lg transition-shadow">
-      <div>
+      <div className="p-4">
         {/* Team Header with Logo */}
         <div className="flex items-center mb-4">
           {team.logoUrl ? (
@@ -35,7 +39,7 @@ const TeamCard = ({ team, onEdit }) => {
           )}
           <div>
             <h3 className="text-xl font-bold text-gray-900">{team.name}</h3>
-            <p className="text-gray-600">{team.owner || 'No owner specified'}</p>
+            <p className="text-gray-600">{displayOwners()}</p>
           </div>
         </div>
 
@@ -43,8 +47,23 @@ const TeamCard = ({ team, onEdit }) => {
         <div className="space-y-2 mb-4">
           <div className="flex justify-between items-center">
             <span className="text-gray-600">Wallet Balance:</span>
-            <span className="font-bold text-green-600">{formatCurrency(team.wallet || 0)}</span>
+            <span className="font-bold text-green-600">{formatIndianRupee(team.wallet || 0)}</span>
           </div>
+          
+          {team.captain && (
+            <div className="flex justify-between items-center">
+              <span className="text-gray-600">Team Captain:</span>
+              <span className="font-bold text-gray-700">{team.captain}</span>
+            </div>
+          )}
+          
+          {team.womanCaptain && (
+            <div className="flex justify-between items-center">
+              <span className="text-gray-600">Woman Captain:</span>
+              <span className="font-bold text-gray-700">{team.womanCaptain}</span>
+            </div>
+          )}
+          
           <div className="flex justify-between items-center">
             <span className="text-gray-600">Players:</span>
             <span className="font-bold">{team.players ? team.players.length : 0}</span>

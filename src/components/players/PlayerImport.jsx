@@ -66,29 +66,103 @@ const PlayerImport = ({ onImportComplete }) => {
 
   const transformPlayerData = (data) => {
     return data.map(row => {
-      // Find appropriate column names based on common patterns
-      const nameKey = Object.keys(row).find(key => 
-        ['name', 'player_name', 'player name', 'playername'].includes(key.toLowerCase())
-      );
+      // Map CSV headers to our player fields
+      // Expected headers:
+      // Name, Capped/Uncapped, Player_Type, Specialization, Batting_Style, Balling_Type,
+      // Minimum_Bidding_Amount, Batting_Innings, Runs, Batting_Average, Strike_Rate,
+      // Balling_innings, Wickets, Balling_Average, Economy
       
-      const roleKey = Object.keys(row).find(key => 
-        ['role', 'player_role', 'player role', 'playerrole', 'position', 'type'].includes(key.toLowerCase())
-      );
+      // Find the field names from CSV regardless of case
+      const findField = (possibleNames) => {
+        for (const name of possibleNames) {
+          const matchingKey = Object.keys(row).find(key => 
+            key.toLowerCase().replace(/[_\s]/g, '') === name.toLowerCase().replace(/[_\s]/g, '')
+          );
+          if (matchingKey) return row[matchingKey];
+        }
+        return null;
+      };
       
-      const basePriceKey = Object.keys(row).find(key => 
-        ['baseprice', 'base_price', 'base price', 'price', 'value'].includes(key.toLowerCase())
-      );
+      // Get player name
+      const name = findField(['Name', 'PlayerName', 'Player_Name', 'player name']);
       
-      const imageUrlKey = Object.keys(row).find(key => 
-        ['image', 'imageurl', 'image_url', 'photo', 'picture', 'player_image', 'player image'].includes(key.toLowerCase())
-      );
+      // Get capped/uncapped status - FIXED for better detection
+      const cappedValue = findField(['Capped/Uncapped', 'capped/uncapped', 'Capped', 'iscapped']);
+      let isCapped = 'uncapped'; // Default is uncapped
+      
+      if (cappedValue) {
+        // Convert to string to handle any type of input
+        const cappedStr = String(cappedValue).toLowerCase().trim();
+        
+        // Check exact match first for "uncapped"
+        if (cappedStr === 'uncapped') {
+          isCapped = 'uncapped';
+        } 
+        // Match "capped" for any value that contains "capped" but not "uncapped"
+        else if (cappedStr === 'capped' || (cappedStr.includes('cap') && !cappedStr.includes('uncap'))) {
+          isCapped = 'capped';
+        }
+        // Explicitly match "no" or "false" as uncapped
+        else if (cappedStr === 'no' || cappedStr === 'false' || cappedStr === '0') {
+          isCapped = 'uncapped';
+        }
+        // Match "yes" or "true" as capped
+        else if (cappedStr === 'yes' || cappedStr === 'true' || cappedStr === '1') {
+          isCapped = 'capped';
+        }
+      }
+      
+      // Log for debugging
+      console.log(`Player ${name} has cappedValue: ${cappedValue} → isCapped: ${isCapped}`);
+      
+      // Get player type
+      const playerType = findField(['Player_Type', 'PlayerType', 'Type', 'Role']);
+      
+      // Get specialization
+      const specialization = findField(['Specialization', 'Specialty', 'Skill']);
+      
+      // Get batting style
+      const battingStyle = findField(['Batting_Style', 'BattingStyle', 'BattingHand']);
+      
+      // Get bowling type
+      const ballingType = findField(['Balling_Type', 'BallingType', 'BowlingType', 'BowlingStyle']);
+      
+      // Get minimum bidding amount (base price)
+      const basePrice = parseInt(findField(['Minimum_Bidding_Amount', 'BasePrice', 'BaseBid', 'MinimumBid'])) || 1000;
+      
+      // Get batting stats
+      const battingInnings = parseInt(findField(['Batting_Innings', 'BattingInnings'])) || 0;
+      const runs = parseInt(findField(['Runs', 'TotalRuns'])) || 0;
+      const battingAverage = parseFloat(findField(['Batting_Average', 'BattingAvg', 'BatAvg'])) || 0;
+      const strikeRate = parseFloat(findField(['Strike_Rate', 'StrikeRate', 'SR'])) || 0;
+      
+      // Get bowling stats
+      const ballingInnings = parseInt(findField(['Balling_innings', 'BallingInnings', 'BowlingInnings'])) || 0;
+      const wickets = parseInt(findField(['Wickets', 'TotalWickets'])) || 0;
+      const ballingAverage = parseFloat(findField(['Balling_Average', 'BallingAvg', 'BowlAvg'])) || 0;
+      const economy = parseFloat(findField(['Economy', 'EconomyRate', 'ER'])) || 0;
+      
+      // Get image URL if provided
+      const imageUrl = findField(['ImageUrl', 'Image', 'Photo', 'Picture']) || '';
       
       // Create standardized player object
       return {
-        name: nameKey ? row[nameKey] : '',
-        role: roleKey ? row[roleKey] : '',
-        basePrice: basePriceKey ? parseInt(row[basePriceKey]) || 1000 : 1000,
-        imageUrl: imageUrlKey ? row[imageUrlKey] : '',
+        name: name || '',
+        isCapped,
+        playerType: playerType || '',
+        specialization: specialization || '',
+        battingStyle: battingStyle || '',
+        ballingType: ballingType || '',
+        basePrice,
+        battingInnings,
+        runs,
+        battingAverage,
+        strikeRate,
+        ballingInnings,
+        wickets,
+        ballingAverage,
+        economy,
+        imageUrl,
         status: 'available'  // Default status
       };
     }).filter(player => player.name && player.name.trim() !== '');  // Remove entries without names
@@ -146,13 +220,14 @@ const PlayerImport = ({ onImportComplete }) => {
     <div className="space-y-6">
       {/* Instructions */}
       <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
-        <h4 className="text-blue-800 font-medium mb-2">Import Instructions</h4>
+        <h4 className="text-blue-800 font-medium mb-2">CSV Import Instructions</h4>
         <ul className="text-blue-700 text-sm space-y-1 list-disc pl-5">
           <li>Use CSV file format (.csv)</li>
-          <li>Required columns: name, role, basePrice</li>
+          <li>Required column: Name</li>
+          <li>Recommended columns: Capped/Uncapped, Player_Type, Specialization, Batting_Style, Balling_Type</li>
+          <li>Stats columns: Minimum_Bidding_Amount, Batting_Innings, Runs, Batting_Average, Strike_Rate, Balling_innings, Wickets, Balling_Average, Economy</li>
           <li>First row should be header row with column names</li>
-          <li>Optional columns: imageUrl (URL to player's photo)</li>
-          <li>For images, provide direct URLs to images hosted on Firebase Storage or other platforms</li>
+          <li>Optional: ImageUrl (URL to player's photo)</li>
         </ul>
       </div>
       

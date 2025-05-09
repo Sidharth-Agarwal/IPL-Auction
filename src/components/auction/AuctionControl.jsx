@@ -18,6 +18,7 @@ import PlayerDisplay from './PlayerDisplay';
 import BidControl from './BidControl';
 import Loading from '../common/Loading';
 import ErrorMessage from '../common/ErrorMessage';
+import { formatIndianRupee } from '../../utils/currencyUtils';
 
 const AuctionControl = () => {
   const [availablePlayers, setAvailablePlayers] = useState([]);
@@ -106,7 +107,7 @@ const AuctionControl = () => {
       const team = teams.find(t => t.id === selectedTeamId);
       const teamName = team ? team.name : 'Selected team';
       
-      setSuccessMessage(`${currentPlayer.name} sold to ${teamName} for $${bidAmount.toLocaleString()}`);
+      setSuccessMessage(`${currentPlayer.name} sold to ${teamName} for ${formatIndianRupee(bidAmount)}`);
       
       // Clear success message after 3 seconds
       setTimeout(() => {
@@ -303,7 +304,7 @@ const AuctionControl = () => {
                 </div>
                 <div className="text-right">
                   <p className="text-sm text-blue-600">Base Price</p>
-                  <p className="text-xl font-bold">${currentPlayer?.basePrice?.toLocaleString() || '1,000'}</p>
+                  <p className="text-xl font-bold">{formatIndianRupee(currentPlayer?.basePrice || 1000)}</p>
                 </div>
               </div>
               
@@ -398,7 +399,7 @@ const AuctionControl = () => {
                       {renderPlayerImage(player)}
                     </div>
                     <p className="text-sm font-medium truncate">{player.name}</p>
-                    <p className="text-xs text-gray-500">${player.basePrice?.toLocaleString() || '1,000'}</p>
+                    <p className="text-xs text-gray-500">{formatIndianRupee(player.basePrice || 1000)}</p>
                   </div>
                 ))}
             </div>
@@ -420,6 +421,7 @@ const AuctionControl = () => {
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Team</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Leadership</th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Available Funds</th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Players</th>
                 </tr>
@@ -430,7 +432,26 @@ const AuctionControl = () => {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         {renderTeamLogo(team)}
-                        <div className="text-sm font-medium text-gray-900">{team.name}</div>
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">{team.name}</div>
+                          <div className="text-xs text-gray-500">
+                            {[team.owner1, team.owner2, team.owner3].filter(Boolean).join(', ')}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="text-sm">
+                        {team.captain && (
+                          <div className="text-blue-600">
+                            <span className="font-medium">Captain:</span> {team.captain}
+                          </div>
+                        )}
+                        {team.womanCaptain && (
+                          <div className="text-pink-600">
+                            <span className="font-medium">Woman Captain:</span> {team.womanCaptain}
+                          </div>
+                        )}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
@@ -439,11 +460,11 @@ const AuctionControl = () => {
                           ? 'text-red-600' 
                           : 'text-green-600'
                       }`}>
-                        ${team.wallet?.toLocaleString() || '0'}
+                        {formatIndianRupee(team.wallet || 0)}
                       </span>
                       {selectedTeamId === team.id && (
                         <span className="ml-2 text-xs text-gray-500">
-                          (After bid: ${(team.wallet - bidAmount).toLocaleString()})
+                          (After bid: {formatIndianRupee(team.wallet - bidAmount)})
                         </span>
                       )}
                     </td>

@@ -1,7 +1,6 @@
 // src/components/players/PlayerList.jsx
 import React, { useState, useEffect } from 'react';
 import { getAllPlayers } from '../../services/playerService';
-import PlayerCard from './PlayerCard';
 import Card from '../common/Card';
 import Button from '../common/Button';
 import Loading from '../common/Loading';
@@ -9,6 +8,7 @@ import ErrorMessage from '../common/ErrorMessage';
 import Modal from '../common/Modal';
 import PlayerImport from './PlayerImport';
 import PlayerForm from './PlayerForm';
+import { formatIndianRupee } from '../../utils/currencyUtils';
 
 const PlayerList = () => {
   const [players, setPlayers] = useState([]);
@@ -33,8 +33,12 @@ const PlayerList = () => {
     } else {
       const term = searchTerm.toLowerCase();
       const filtered = players.filter(
-        player => player.name.toLowerCase().includes(term) || 
-                (player.role && player.role.toLowerCase().includes(term))
+        player => 
+          player.name.toLowerCase().includes(term) || 
+          (player.playerType && player.playerType.toLowerCase().includes(term)) ||
+          (player.specialization && player.specialization.toLowerCase().includes(term)) ||
+          (player.battingStyle && player.battingStyle.toLowerCase().includes(term)) ||
+          (player.ballingType && player.ballingType.toLowerCase().includes(term))
       );
       setFilteredPlayers(filtered);
     }
@@ -46,6 +50,13 @@ const PlayerList = () => {
       setError(null);
       
       const playersData = await getAllPlayers();
+      
+      // Log the capped/uncapped status for debugging
+      console.log('Player data:', playersData.map(p => ({ 
+        name: p.name, 
+        isCapped: p.isCapped 
+      })));
+      
       setPlayers(playersData);
       setFilteredPlayers(playersData);
       
@@ -102,10 +113,6 @@ const PlayerList = () => {
     fetchPlayers();
   };
   
-  const formatCurrency = (amount) => {
-    return `$${amount.toLocaleString()}`;
-  };
-  
   if (loading) {
     return <Loading text="Loading players..." />;
   }
@@ -146,7 +153,7 @@ const PlayerList = () => {
               type="text"
               id="search"
               className="focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md"
-              placeholder="Search by name or role..."
+              placeholder="Search by name, type, specialization..."
               value={searchTerm}
               onChange={handleSearchChange}
             />
@@ -195,7 +202,16 @@ const PlayerList = () => {
                     Player
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Role
+                    Type
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Specialization
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Batting
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Bowling
                   </th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Base Price
@@ -234,14 +250,48 @@ const PlayerList = () => {
                             </span>
                           </div>
                         )}
-                        <div className="ml-3 text-sm font-medium text-gray-900">{player.name}</div>
+                        <div>
+                          <div className="ml-3 text-sm font-medium text-gray-900">{player.name}</div>
+                          <div className="ml-3 text-xs text-gray-500">
+                            {player.isCapped === 'capped' ? (
+                              <span className="px-1.5 py-0.5 bg-green-100 text-green-800 rounded-full text-xs">Capped</span>
+                            ) : (
+                              <span className="px-1.5 py-0.5 bg-gray-100 text-gray-800 rounded-full text-xs">Uncapped</span>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-500">{player.role || 'N/A'}</div>
+                      <div className="text-sm text-gray-500">{player.playerType || 'N/A'}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-500">{player.specialization || 'N/A'}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-xs text-gray-500">
+                        <div>{player.battingStyle || 'N/A'}</div>
+                        {player.battingAverage > 0 && (
+                          <div>Avg: {player.battingAverage.toFixed(2)}</div>
+                        )}
+                        {player.strikeRate > 0 && (
+                          <div>SR: {player.strikeRate.toFixed(2)}</div>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-xs text-gray-500">
+                        <div>{player.ballingType || 'N/A'}</div>
+                        {player.ballingAverage > 0 && (
+                          <div>Avg: {player.ballingAverage.toFixed(2)}</div>
+                        )}
+                        {player.economy > 0 && (
+                          <div>Econ: {player.economy.toFixed(2)}</div>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right">
-                      <div className="text-sm font-medium text-green-600">{formatCurrency(player.basePrice || 0)}</div>
+                      <div className="text-sm font-medium text-green-600">{formatIndianRupee(player.basePrice || 0)}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
@@ -292,7 +342,7 @@ const PlayerList = () => {
           setShowPlayerFormModal(false);
           setSelectedPlayer(null);
         }}
-        title={selectedPlayer ? "Edit Player" : "Add New Player"}
+        title={selectedPlayer ? "Edit Player" : "Add Player"}
         size="lg"
       >
         <PlayerForm 
