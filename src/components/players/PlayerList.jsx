@@ -150,7 +150,7 @@ const PlayerList = () => {
       )}
       
       {/* Header with Search and Import Button */}
-      {/* <div className="flex flex-col md:flex-row justify-between gap-4 bg-white p-4 rounded-lg shadow">
+      <div className="flex flex-col md:flex-row justify-between gap-4 bg-white p-4 rounded-lg shadow">
         <div className="flex-grow">
           <label htmlFor="search" className="block text-sm font-medium text-gray-700 mb-1">
             Search Players
@@ -197,7 +197,7 @@ const PlayerList = () => {
             Import Players
           </Button>
         </div>
-      </div> */}
+      </div>
       
       {/* Players Table */}
       <Card title={`Players (${players.length})`}>
@@ -308,23 +308,11 @@ const PlayerList = () => {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-xs text-gray-500">
                         <div>{player.battingStyle || 'N/A'}</div>
-                        {player.battingAverage > 0 && (
-                          <div>Avg: {player.battingAverage.toFixed(2)}</div>
-                        )}
-                        {player.strikeRate > 0 && (
-                          <div>SR: {player.strikeRate.toFixed(2)}</div>
-                        )}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-xs text-gray-500">
                         <div>{player.ballingType || 'N/A'}</div>
-                        {player.ballingAverage > 0 && (
-                          <div>Avg: {player.ballingAverage.toFixed(2)}</div>
-                        )}
-                        {player.economy > 0 && (
-                          <div>Econ: {player.economy.toFixed(2)}</div>
-                        )}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right">

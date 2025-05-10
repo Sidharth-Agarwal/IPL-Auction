@@ -34,6 +34,9 @@ const PlayerImport = ({ onImportComplete }) => {
       const csvData = await parseCSV(selectedFile);
       setPreviewData(csvData.data.slice(0, 5));
       setShowPreview(true);
+      
+      // Debug - log the headers from CSV to check if Gender is present
+      console.log('CSV Headers:', Object.keys(csvData.data[0] || {}));
     } catch (err) {
       console.error('Error parsing CSV:', err);
       setError('Failed to parse the CSV file. Please check the file format.');
@@ -66,19 +69,20 @@ const PlayerImport = ({ onImportComplete }) => {
 
   const transformPlayerData = (data) => {
     return data.map(row => {
-      // Map CSV headers to our player fields
-      // Expected headers:
-      // Name, Gender, Capped/Uncapped, Player_Type, Specialization, Batting_Style, Balling_Type,
-      // Minimum_Bidding_Amount, Batting_Innings, Runs, Batting_Average, Strike_Rate,
-      // Balling_innings, Wickets, Balling_Average, Economy
+      // Debug logging for each row to verify gender value
+      console.log('Processing row:', row);
       
+      // Map CSV headers to our player fields
       // Find the field names from CSV regardless of case
       const findField = (possibleNames) => {
         for (const name of possibleNames) {
           const matchingKey = Object.keys(row).find(key => 
             key.toLowerCase().replace(/[_\s]/g, '') === name.toLowerCase().replace(/[_\s]/g, '')
           );
-          if (matchingKey) return row[matchingKey];
+          if (matchingKey) {
+            console.log(`Found ${name} in CSV as: ${matchingKey} with value: ${row[matchingKey]}`);
+            return row[matchingKey];
+          }
         }
         return null;
       };
@@ -86,21 +90,26 @@ const PlayerImport = ({ onImportComplete }) => {
       // Get player name
       const name = findField(['Name', 'PlayerName', 'Player_Name', 'player name']);
       
-      // Get gender
+      // Get gender - IMPROVED to better handle Female values
       const genderValue = findField(['Gender', 'Sex', 'PlayerGender']);
       let gender = 'male'; // Default gender is male
       
       if (genderValue) {
         // Convert to string to handle any type of input
         const genderStr = String(genderValue).toLowerCase().trim();
+        console.log(`Processing gender value: "${genderStr}" for player: ${name}`);
         
-        // Match for female
-        if (genderStr === 'female' || genderStr === 'f' || genderStr === 'woman' || genderStr === 'girl') {
+        // More robust case-insensitive check for female
+        if (genderStr === 'female' || genderStr === 'f' || genderStr === 'woman' || 
+            genderStr === 'girl' || genderStr.includes('fem')) {
           gender = 'female';
+          console.log(`Setting gender to female for player: ${name}`);
         } 
-        // Match for male (default)
-        else if (genderStr === 'male' || genderStr === 'm' || genderStr === 'man' || genderStr === 'boy') {
+        // Explicit check for male
+        else if (genderStr === 'male' || genderStr === 'm' || genderStr === 'man' || 
+                genderStr === 'boy' || genderStr.includes('mal')) {
           gender = 'male';
+          console.log(`Setting gender to male for player: ${name}`);
         }
       }
       
@@ -164,7 +173,7 @@ const PlayerImport = ({ onImportComplete }) => {
       const imageUrl = findField(['ImageUrl', 'Image', 'Photo', 'Picture']) || '';
       
       // Create standardized player object
-      return {
+      const playerData = {
         name: name || '',
         gender,
         isCapped,
@@ -184,6 +193,9 @@ const PlayerImport = ({ onImportComplete }) => {
         imageUrl,
         status: 'available'  // Default status
       };
+      
+      console.log('Final player data:', playerData);
+      return playerData;
     }).filter(player => player.name && player.name.trim() !== '');  // Remove entries without names
   };
 
@@ -206,6 +218,13 @@ const PlayerImport = ({ onImportComplete }) => {
       if (playersData.length === 0) {
         throw new Error('No valid player data found in the file');
       }
+      
+      // Debug - log the processed players data to check gender values
+      console.log('Players to import:', playersData);
+      console.log('Gender summary:', playersData.reduce((acc, player) => {
+        acc[player.gender] = (acc[player.gender] || 0) + 1;
+        return acc;
+      }, {}));
       
       // Add players to database
       const result = await addPlayers(playersData);
@@ -243,10 +262,11 @@ const PlayerImport = ({ onImportComplete }) => {
         <ul className="text-blue-700 text-sm space-y-1 list-disc pl-5">
           <li>Use CSV file format (.csv)</li>
           <li>Required column: Name</li>
-          <li>Recommended columns: Gender, Capped/Uncapped, Player_Type, Specialization, Batting_Style, Balling_Type</li>
+          <li>Important column: Gender (with values "Male" or "Female")</li>
+          <li>Recommended columns: Capped/Uncapped, Player_Type, Specialization, Batting_Style, Balling_Type</li>
           <li>Stats columns: Minimum_Bidding_Amount, Batting_Innings, Runs, Batting_Average, Strike_Rate, Balling_innings, Wickets, Balling_Average, Economy</li>
           <li>First row should be header row with column names</li>
-          <li>Optional: ImageUrl (URL to player's photo)</li>
+          <li>Optional: Photo (URL to player's photo)</li>
         </ul>
       </div>
       

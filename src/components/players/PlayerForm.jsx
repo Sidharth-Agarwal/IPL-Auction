@@ -42,17 +42,19 @@ const PlayerForm = ({ playerId = null, onSuccess = null, onCancel = null }) => {
   
   // Player type options
   const playerTypeOptions = [
-    'Batsman',
+    'Batter',
     'Bowler',
-    'All-Rounder',
-    'Wicket-Keeper'
+    'All Rounder (Both)',
+    'Wicket Keeper'
   ];
   
   // Specialization options
   const specializationOptions = [
-    'Top-order Batsman',
-    'Middle-order Batsman',
+    'Opener',
+    'Anchor',
     'Finisher',
+    'Slugger',
+    'Wicket Keeper',
     'Fast Bowler',
     'Spinner',
     'Pace All-rounder',
@@ -61,20 +63,21 @@ const PlayerForm = ({ playerId = null, onSuccess = null, onCancel = null }) => {
   
   // Batting style options
   const battingStyleOptions = [
-    'Right-handed',
-    'Left-handed'
+    'Right handed batter',
+    'Left handed batter',
+    'Not Applicable'
   ];
   
   // Bowling type options
   const ballingTypeOptions = [
-    'Right-arm Fast',
-    'Left-arm Fast',
-    'Right-arm Medium',
-    'Left-arm Medium',
-    'Right-arm Off Spin',
-    'Left-arm Orthodox',
-    'Right-arm Leg Spin',
-    'Left-arm Chinaman'
+    'Right arm medium fast',
+    'Left arm medium fast',
+    'Right arm off spinner',
+    'Left arm off spinner',
+    'Right arm leg break',
+    'Left arm leg break',
+    'My style',
+    'Not Applicable'
   ];
   
   // Status options
@@ -98,6 +101,8 @@ const PlayerForm = ({ playerId = null, onSuccess = null, onCancel = null }) => {
       try {
         setInitialLoading(true);
         const playerData = await getPlayer(playerId);
+        console.log('Loaded player data:', playerData); // Debug log
+        
         setFormData({
           name: playerData.name || '',
           isCapped: playerData.isCapped || 'uncapped',
@@ -138,11 +143,19 @@ const PlayerForm = ({ playerId = null, onSuccess = null, onCancel = null }) => {
     loadPlayer();
   }, [playerId]);
 
+  // Debug log when form data changes
+  useEffect(() => {
+    console.log('Current form data:', formData);
+  }, [formData]);
+
   const handleChange = (e) => {
     const { name, value, type } = e.target;
     
     // Convert to number for number fields
     const processedValue = type === 'number' ? Number(value) : value;
+    
+    // Debug log
+    console.log(`Field changed: ${name} = ${processedValue}`);
     
     setFormData(prev => ({
       ...prev,
@@ -210,6 +223,11 @@ const PlayerForm = ({ playerId = null, onSuccess = null, onCancel = null }) => {
       errors.soldAmount = 'Sold amount is required when status is "sold"';
     }
     
+    // Validate gender is selected
+    if (!formData.gender) {
+      errors.gender = 'Gender is required';
+    }
+    
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -243,6 +261,9 @@ const PlayerForm = ({ playerId = null, onSuccess = null, onCancel = null }) => {
         ...formData,
         imageUrl: imageUrl
       };
+      
+      // Debug log before saving
+      console.log('Saving player data:', playerData);
       
       if (isEditing) {
         // Update existing player
@@ -320,7 +341,7 @@ const PlayerForm = ({ playerId = null, onSuccess = null, onCancel = null }) => {
         {/* Gender Selection */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Gender
+            Gender *
           </label>
           <div className="mt-1 flex items-center space-x-4">
             {genderOptions.map(option => (
@@ -340,6 +361,9 @@ const PlayerForm = ({ playerId = null, onSuccess = null, onCancel = null }) => {
               </div>
             ))}
           </div>
+          {formErrors.gender && (
+            <p className="mt-1 text-sm text-red-600">{formErrors.gender}</p>
+          )}
         </div>
         
         {/* Capped/Uncapped */}

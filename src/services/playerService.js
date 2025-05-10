@@ -19,6 +19,7 @@ export const addPlayer = async (playerData) => {
     try {
     const player = {
         name: playerData.name || '',
+        gender: playerData.gender || 'male', // Added gender field with default
         isCapped: playerData.isCapped || 'uncapped',
         playerType: playerData.playerType || '',
         specialization: playerData.specialization || '',
@@ -40,6 +41,7 @@ export const addPlayer = async (playerData) => {
         createdAt: serverTimestamp()
     };
     
+    console.log('Adding player with gender:', player.gender); // Debug log
     const docRef = await addDoc(playersCollection, player);
     return { id: docRef.id, ...player };
     } catch (error) {
@@ -56,6 +58,7 @@ export const addPlayers = async (playersArray) => {
     for (const playerData of playersArray) {
         const player = {
         name: playerData.name || '',
+        gender: playerData.gender || 'male', // Added gender field with default
         isCapped: playerData.isCapped || 'uncapped',
         playerType: playerData.playerType || '',
         specialization: playerData.specialization || '',
@@ -81,6 +84,13 @@ export const addPlayers = async (playersArray) => {
         results.push({ id: docRef.id, ...player });
     }
     
+    // Log gender distribution
+    const genderCounts = results.reduce((acc, player) => {
+        acc[player.gender] = (acc[player.gender] || 0) + 1;
+        return acc;
+    }, {});
+    console.log(`Created ${results.length} players with gender distribution:`, genderCounts);
+    
     return results;
     } catch (error) {
     console.error('Error adding players:', error);
@@ -92,10 +102,24 @@ export const addPlayers = async (playersArray) => {
 export const getAllPlayers = async () => {
     try {
     const querySnapshot = await getDocs(playersCollection);
-    return querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-    }));
+    const players = querySnapshot.docs.map(doc => {
+        const data = doc.data();
+        // Ensure gender field is present
+        return {
+            id: doc.id,
+            ...data,
+            gender: data.gender || 'male' // Default if missing
+        };
+    });
+    
+    // Log gender distribution
+    const genderCounts = players.reduce((acc, player) => {
+        acc[player.gender] = (acc[player.gender] || 0) + 1;
+        return acc;
+    }, {});
+    console.log(`Retrieved ${players.length} players with gender distribution:`, genderCounts);
+    
+    return players;
     } catch (error) {
     console.error('Error getting players:', error);
     throw error;
@@ -107,10 +131,15 @@ export const getAvailablePlayers = async () => {
     try {
     const q = query(playersCollection, where("status", "==", "available"));
     const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-    }));
+    return querySnapshot.docs.map(doc => {
+        const data = doc.data();
+        // Ensure gender field is present
+        return {
+            id: doc.id,
+            ...data,
+            gender: data.gender || 'male' // Default if missing
+        };
+    });
     } catch (error) {
     console.error('Error getting available players:', error);
     throw error;
@@ -124,7 +153,13 @@ export const getPlayer = async (playerId) => {
     const docSnap = await getDoc(docRef);
     
     if (docSnap.exists()) {
-        return { id: docSnap.id, ...docSnap.data() };
+        const data = docSnap.data();
+        // Ensure gender field is present
+        return { 
+            id: docSnap.id, 
+            ...data,
+            gender: data.gender || 'male' // Default if missing
+        };
     } else {
         throw new Error('Player not found');
     }
@@ -152,6 +187,7 @@ export const updatePlayer = async (playerId, playerData) => {
     
     // Add each field if it's provided in playerData
     if (playerData.name !== undefined) updateData.name = playerData.name;
+    if (playerData.gender !== undefined) updateData.gender = playerData.gender; // Added gender field
     if (playerData.isCapped !== undefined) updateData.isCapped = playerData.isCapped;
     if (playerData.playerType !== undefined) updateData.playerType = playerData.playerType;
     if (playerData.specialization !== undefined) updateData.specialization = playerData.specialization;
@@ -172,6 +208,7 @@ export const updatePlayer = async (playerId, playerData) => {
     if (playerData.soldToTeam !== undefined) updateData.soldToTeam = playerData.soldToTeam;
     if (playerData.soldAmount !== undefined) updateData.soldAmount = playerData.soldAmount;
     
+    console.log('Updating player with data:', updateData);
     await updateDoc(playerRef, updateData);
     
     return { id: playerId, ...updateData };
