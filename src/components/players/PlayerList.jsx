@@ -38,7 +38,8 @@ const PlayerList = () => {
           (player.playerType && player.playerType.toLowerCase().includes(term)) ||
           (player.specialization && player.specialization.toLowerCase().includes(term)) ||
           (player.battingStyle && player.battingStyle.toLowerCase().includes(term)) ||
-          (player.ballingType && player.ballingType.toLowerCase().includes(term))
+          (player.ballingType && player.ballingType.toLowerCase().includes(term)) ||
+          (player.gender && player.gender.toLowerCase().includes(term))
       );
       setFilteredPlayers(filtered);
     }
@@ -202,6 +203,9 @@ const PlayerList = () => {
                     Player
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Gender
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Type
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -260,6 +264,19 @@ const PlayerList = () => {
                             )}
                           </div>
                         </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-500 capitalize">
+                        {player.gender === 'female' ? (
+                          <span className="px-1.5 py-0.5 bg-pink-100 text-pink-800 rounded-full text-xs capitalize">
+                            {player.gender || 'Male'}
+                          </span>
+                        ) : (
+                          <span className="px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded-full text-xs capitalize">
+                            {player.gender || 'Male'}
+                          </span>
+                        )}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">

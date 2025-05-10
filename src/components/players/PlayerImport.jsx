@@ -68,7 +68,7 @@ const PlayerImport = ({ onImportComplete }) => {
     return data.map(row => {
       // Map CSV headers to our player fields
       // Expected headers:
-      // Name, Capped/Uncapped, Player_Type, Specialization, Batting_Style, Balling_Type,
+      // Name, Gender, Capped/Uncapped, Player_Type, Specialization, Batting_Style, Balling_Type,
       // Minimum_Bidding_Amount, Batting_Innings, Runs, Batting_Average, Strike_Rate,
       // Balling_innings, Wickets, Balling_Average, Economy
       
@@ -86,7 +86,25 @@ const PlayerImport = ({ onImportComplete }) => {
       // Get player name
       const name = findField(['Name', 'PlayerName', 'Player_Name', 'player name']);
       
-      // Get capped/uncapped status - FIXED for better detection
+      // Get gender
+      const genderValue = findField(['Gender', 'Sex', 'PlayerGender']);
+      let gender = 'male'; // Default gender is male
+      
+      if (genderValue) {
+        // Convert to string to handle any type of input
+        const genderStr = String(genderValue).toLowerCase().trim();
+        
+        // Match for female
+        if (genderStr === 'female' || genderStr === 'f' || genderStr === 'woman' || genderStr === 'girl') {
+          gender = 'female';
+        } 
+        // Match for male (default)
+        else if (genderStr === 'male' || genderStr === 'm' || genderStr === 'man' || genderStr === 'boy') {
+          gender = 'male';
+        }
+      }
+      
+      // Get capped/uncapped status
       const cappedValue = findField(['Capped/Uncapped', 'capped/uncapped', 'Capped', 'iscapped']);
       let isCapped = 'uncapped'; // Default is uncapped
       
@@ -113,7 +131,7 @@ const PlayerImport = ({ onImportComplete }) => {
       }
       
       // Log for debugging
-      console.log(`Player ${name} has cappedValue: ${cappedValue} → isCapped: ${isCapped}`);
+      console.log(`Player ${name} has cappedValue: ${cappedValue} → isCapped: ${isCapped}, gender: ${gender}`);
       
       // Get player type
       const playerType = findField(['Player_Type', 'PlayerType', 'Type', 'Role']);
@@ -148,6 +166,7 @@ const PlayerImport = ({ onImportComplete }) => {
       // Create standardized player object
       return {
         name: name || '',
+        gender,
         isCapped,
         playerType: playerType || '',
         specialization: specialization || '',
@@ -224,7 +243,7 @@ const PlayerImport = ({ onImportComplete }) => {
         <ul className="text-blue-700 text-sm space-y-1 list-disc pl-5">
           <li>Use CSV file format (.csv)</li>
           <li>Required column: Name</li>
-          <li>Recommended columns: Capped/Uncapped, Player_Type, Specialization, Batting_Style, Balling_Type</li>
+          <li>Recommended columns: Gender, Capped/Uncapped, Player_Type, Specialization, Batting_Style, Balling_Type</li>
           <li>Stats columns: Minimum_Bidding_Amount, Batting_Innings, Runs, Batting_Average, Strike_Rate, Balling_innings, Wickets, Balling_Average, Economy</li>
           <li>First row should be header row with column names</li>
           <li>Optional: ImageUrl (URL to player's photo)</li>

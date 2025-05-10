@@ -28,7 +28,8 @@ const PlayerForm = ({ playerId = null, onSuccess = null, onCancel = null }) => {
     imageUrl: '',
     status: 'available',
     soldAmount: 0,
-    soldTo: null
+    soldTo: null,
+    gender: 'male' // Default gender
   };
   
   const [formData, setFormData] = useState(initialFormData);
@@ -82,6 +83,12 @@ const PlayerForm = ({ playerId = null, onSuccess = null, onCancel = null }) => {
     'sold',
     'unsold'
   ];
+
+  // Gender options
+  const genderOptions = [
+    'male',
+    'female'
+  ];
   
   // Load player data if editing
   useEffect(() => {
@@ -111,7 +118,8 @@ const PlayerForm = ({ playerId = null, onSuccess = null, onCancel = null }) => {
           status: playerData.status || 'available',
           soldAmount: playerData.soldAmount || 0,
           soldTo: playerData.soldTo || null,
-          soldToTeam: playerData.soldToTeam || ''
+          soldToTeam: playerData.soldToTeam || '',
+          gender: playerData.gender || 'male' // Default to male if not specified
         });
         
         if (playerData.imageUrl) {
@@ -307,6 +315,31 @@ const PlayerForm = ({ playerId = null, onSuccess = null, onCancel = null }) => {
           {formErrors.name && (
             <p className="mt-1 text-sm text-red-600">{formErrors.name}</p>
           )}
+        </div>
+
+        {/* Gender Selection */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Gender
+          </label>
+          <div className="mt-1 flex items-center space-x-4">
+            {genderOptions.map(option => (
+              <div className="flex items-center" key={option}>
+                <input
+                  id={option}
+                  name="gender"
+                  type="radio"
+                  value={option}
+                  checked={formData.gender === option}
+                  onChange={handleChange}
+                  className="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300"
+                />
+                <label htmlFor={option} className="ml-2 block text-sm text-gray-700 capitalize">
+                  {option}
+                </label>
+              </div>
+            ))}
+          </div>
         </div>
         
         {/* Capped/Uncapped */}

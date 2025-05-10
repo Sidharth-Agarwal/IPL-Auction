@@ -85,6 +85,16 @@ const PlayerDisplay = ({ player }) => {
             
             {/* Player Attributes */}
             <div className="space-y-4">
+              {/* Gender */}
+              <div className="flex justify-between">
+                <span className="text-gray-500">Gender:</span>
+                <span className={`font-medium px-2.5 py-0.5 rounded-full text-xs capitalize ${
+                  player.gender === 'female' ? 'bg-pink-100 text-pink-800' : 'bg-blue-100 text-blue-800'
+                }`}>
+                  {player.gender || 'Male'}
+                </span>
+              </div>
+              
               {player.specialization && (
                 <div className="flex justify-between">
                   <span className="text-gray-500">Specialization:</span>

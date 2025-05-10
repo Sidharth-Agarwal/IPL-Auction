@@ -138,6 +138,7 @@ const ResultsView = () => {
       // Add player details with all columns
       const headers = [
         'Name',
+        'Gender',
         'Capped/Uncapped',
         'Player_Type',
         'Specialization',
@@ -161,6 +162,7 @@ const ResultsView = () => {
       teamPlayers.forEach(player => {
         const row = [
           `"${player.name || ''}"`,
+          `"${player.gender || 'male'}"`,
           `"${player.isCapped || 'uncapped'}"`,
           `"${player.playerType || ''}"`,
           `"${player.specialization || ''}"`,
@@ -220,6 +222,7 @@ const ResultsView = () => {
         'Team Captain', 
         'Woman Captain',
         'Name',
+        'Gender',
         'Capped/Uncapped',
         'Player_Type',
         'Specialization',
@@ -253,6 +256,7 @@ const ResultsView = () => {
               `"${team.captain || ''}"`,
               `"${team.womanCaptain || ''}"`,
               `"${player.name || ''}"`,
+              `"${player.gender || 'male'}"`,
               `"${player.isCapped || 'uncapped'}"`,
               `"${player.playerType || ''}"`,
               `"${player.specialization || ''}"`,
@@ -473,6 +477,7 @@ const ResultsView = () => {
                                   <thead className="bg-gray-50">
                                     <tr>
                                       <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Gender</th>
                                       <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
                                       <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Price</th>
                                     </tr>
@@ -495,6 +500,15 @@ const ResultsView = () => {
                                             </div>
                                           </div>
                                         </td>
+                                        <td className="px-4 py-2 whitespace-nowrap">
+                                          <div className="text-sm text-gray-500">
+                                            {player.gender === 'female' ? (
+                                              <span className="px-1.5 py-0.5 bg-pink-100 text-pink-800 rounded-full text-xs capitalize">F</span>
+                                            ) : (
+                                              <span className="px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded-full text-xs capitalize">M</span>
+                                            )}
+                                          </div>
+                                        </td>
                                         <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">{player.playerType || 'N/A'}</td>
                                         <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-green-600 font-medium">{formatIndianRupee(player.soldAmount || 0)}</td>
                                       </tr>
@@ -515,7 +529,7 @@ const ResultsView = () => {
             </div>
           )}
           
-          {/* Players Tab - Updated with new fields */}
+          {/* Players Tab - Updated with gender field */}
           {activeTab === 'players' && (
             <div>
               {players.length === 0 ? (
@@ -530,6 +544,7 @@ const ResultsView = () => {
                         <thead className="bg-gray-50">
                           <tr>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Player</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Gender</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Specialization</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Batting</th>
@@ -555,6 +570,19 @@ const ResultsView = () => {
                                       )}
                                     </div>
                                   </div>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="text-sm text-gray-500">
+                                  {player.gender === 'female' ? (
+                                    <span className="px-1.5 py-0.5 bg-pink-100 text-pink-800 rounded-full text-xs capitalize">
+                                      {player.gender || 'Male'}
+                                    </span>
+                                  ) : (
+                                    <span className="px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded-full text-xs capitalize">
+                                      {player.gender || 'Male'}
+                                    </span>
+                                  )}
                                 </div>
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap">
@@ -586,7 +614,7 @@ const ResultsView = () => {
                                 </div>
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap">
-                                <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                              <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
                                   ${player.status === 'sold' ? 'bg-green-100 text-green-800' : 
                                    player.status === 'unsold' ? 'bg-red-100 text-red-800' : 
                                    'bg-blue-100 text-blue-800'}`}>
