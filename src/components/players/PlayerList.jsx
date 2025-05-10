@@ -150,7 +150,7 @@ const PlayerList = () => {
       )}
       
       {/* Header with Search and Import Button */}
-      {/* <div className="flex flex-col md:flex-row justify-between gap-4 bg-white p-4 rounded-lg shadow">
+      <div className="flex flex-col md:flex-row justify-between gap-4 bg-white p-4 rounded-lg shadow">
         <div className="flex-grow">
           <label htmlFor="search" className="block text-sm font-medium text-gray-700 mb-1">
             Search Players
@@ -171,7 +171,7 @@ const PlayerList = () => {
             />
           </div>
         </div>
-        <div className="flex items-end space-x-2">
+        {/* <div className="flex items-end space-x-2">
           <Button 
             variant="primary" 
             size="header"
@@ -196,8 +196,8 @@ const PlayerList = () => {
           >
             Import Players
           </Button>
-        </div>
-      </div> */}
+        </div> */}
+      </div>
       
       {/* Players Table */}
       <Card title={`Players (${players.length})`}>
