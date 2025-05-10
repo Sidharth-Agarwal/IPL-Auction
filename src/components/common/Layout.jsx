@@ -21,7 +21,7 @@ const Layout = ({ children, title = 'Cricket Auction App' }) => {
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
       {/* Header */}
-      <header className="bg-white shadow">
+      {/* <header className="bg-white shadow">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex">
@@ -47,7 +47,7 @@ const Layout = ({ children, title = 'Cricket Auction App' }) => {
             </nav>
           </div>
         </div>
-      </header>
+      </header> */}
       
       {/* Page title */}
       <div className="bg-white shadow">

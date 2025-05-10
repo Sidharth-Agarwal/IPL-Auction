@@ -150,7 +150,7 @@ const PlayerList = () => {
       )}
       
       {/* Header with Search and Import Button */}
-      <div className="flex flex-col md:flex-row justify-between gap-4 bg-white p-4 rounded-lg shadow">
+      {/* <div className="flex flex-col md:flex-row justify-between gap-4 bg-white p-4 rounded-lg shadow">
         <div className="flex-grow">
           <label htmlFor="search" className="block text-sm font-medium text-gray-700 mb-1">
             Search Players
@@ -197,7 +197,7 @@ const PlayerList = () => {
             Import Players
           </Button>
         </div>
-      </div>
+      </div> */}
       
       {/* Players Table */}
       <Card title={`Players (${players.length})`}>
@@ -234,9 +234,9 @@ const PlayerList = () => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Status
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Team
-                  </th>
+                  </th> */}
                   {/* <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Actions
                   </th> */}
@@ -326,11 +326,11 @@ const PlayerList = () => {
                         {player.status || 'available'}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    {/* <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-500">
                         {player.status === 'sold' ? (player.soldToTeam || '-') : '-'}
                       </div>
-                    </td>
+                    </td> */}
                     {/* <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <Button 
                         variant="outline" 
