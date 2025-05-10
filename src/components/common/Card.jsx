@@ -22,7 +22,7 @@ const Card = ({
     none: '',
     xs: 'p-1',
     sm: 'p-2',
-    normal: 'p-4',
+    normal: '',
     lg: 'p-6',
     xl: 'p-8'
   };
