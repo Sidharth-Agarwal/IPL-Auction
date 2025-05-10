@@ -5,7 +5,7 @@ import PlayerList from '../components/players/PlayerList';
 
 const PlayersPage = () => {
   return (
-    <Layout title="Players Management">
+    <Layout title="ADA PREMIERE LEAGUE">
       <PlayerList />
     </Layout>
   );

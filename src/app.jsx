@@ -22,11 +22,11 @@ function App() {
         <NotificationComponent />
         <Routes>
           {/* Main Routes */}
-          <Route path="/" element={<TeamsPage />} />
-          <Route path="/teams" element={<TeamsPage />} />
+          <Route path="/" element={<PlayersPage />} />
+          {/* <Route path="/teams" element={<TeamsPage />} /> */}
           <Route path="/players" element={<PlayersPage />} />
-          <Route path="/auction" element={<AuctionPage />} />
-          <Route path="/results" element={<ResultsPage />} />
+          {/* <Route path="/auction" element={<AuctionPage />} />
+          <Route path="/results" element={<ResultsPage />} /> */}
           
           {/* Catch All */}
           <Route path="*" element={<NotFoundPage />} />

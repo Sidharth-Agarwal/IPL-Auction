@@ -8,6 +8,7 @@ import ErrorMessage from '../common/ErrorMessage';
 import Modal from '../common/Modal';
 import PlayerImport from './PlayerImport';
 import PlayerForm from './PlayerForm';
+import PlayerModal from './PlayerModal'; // Import the PlayerModal component
 import { formatIndianRupee } from '../../utils/currencyUtils';
 
 const PlayerList = () => {
@@ -20,6 +21,10 @@ const PlayerList = () => {
   const [showPlayerFormModal, setShowPlayerFormModal] = useState(false);
   const [selectedPlayer, setSelectedPlayer] = useState(null);
   const [successMessage, setSuccessMessage] = useState('');
+  
+  // Add state for player details modal
+  const [showPlayerDetailModal, setShowPlayerDetailModal] = useState(false);
+  const [playerToView, setPlayerToView] = useState(null);
   
   // Load players on initial render
   useEffect(() => {
@@ -85,6 +90,12 @@ const PlayerList = () => {
   const handleEditPlayer = (player) => {
     setSelectedPlayer(player);
     setShowPlayerFormModal(true);
+  };
+  
+  // Handler for viewing player details
+  const handleViewPlayer = (player) => {
+    setPlayerToView(player);
+    setShowPlayerDetailModal(true);
   };
   
   const handleImportComplete = (result) => {
@@ -233,7 +244,11 @@ const PlayerList = () => {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredPlayers.map(player => (
-                  <tr key={player.id} className="hover:bg-gray-50">
+                  <tr 
+                    key={player.id} 
+                    className="hover:bg-gray-50 cursor-pointer"
+                    onClick={() => handleViewPlayer(player)}
+                  >
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         {player.imageUrl ? (
@@ -241,7 +256,12 @@ const PlayerList = () => {
                             src={player.imageUrl} 
                             alt={player.name} 
                             className="w-12 h-12 rounded-full object-cover border hover:w-24 hover:h-24 transition-all cursor-pointer mr-3"
-                            onClick={() => window.open(player.imageUrl, '_blank')}
+                            onClick={(e) => {
+                              e.stopPropagation(); // Prevent row click handler
+                              if (player.imageUrl) {
+                                window.open(player.imageUrl, '_blank');
+                              }
+                            }}
                             onError={(e) => {
                               e.target.onerror = null;
                               e.target.src = 'data:image/svg+xml;charset=UTF-8,%3csvg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"%3e%3crect x="3" y="3" width="18" height="18" rx="2" ry="2"%3e%3c/rect%3e%3ccircle cx="8.5" cy="8.5" r="1.5"%3e%3c/circle%3e%3cpolyline points="21 15 16 10 5 21"%3e%3c/polyline%3e%3c/svg%3e';
@@ -327,7 +347,10 @@ const PlayerList = () => {
                       <Button 
                         variant="outline" 
                         size="xs" 
-                        onClick={() => handleEditPlayer(player)}
+                        onClick={(e) => {
+                          e.stopPropagation(); // Prevent row click handler
+                          handleEditPlayer(player);
+                        }}
                       >
                         Edit
                       </Button>
@@ -371,6 +394,16 @@ const PlayerList = () => {
           }}
         />
       </Modal>
+      
+      {/* Player Details Modal */}
+      <PlayerModal 
+        player={playerToView} 
+        isOpen={showPlayerDetailModal} 
+        onClose={() => {
+          setShowPlayerDetailModal(false);
+          setPlayerToView(null);
+        }}
+      />
     </div>
   );
 };

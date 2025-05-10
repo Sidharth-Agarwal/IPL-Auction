@@ -21,17 +21,15 @@ const Layout = ({ children, title = 'Cricket Auction App' }) => {
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
       {/* Header */}
-      <header className="bg-white shadow">
+      {/* <header className="bg-white shadow">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
-            {/* Logo and title */}
             <div className="flex">
               <div className="flex-shrink-0 flex items-center">
                 <span className="text-blue-600 font-bold text-xl">ADA Premiere League</span>
               </div>
             </div>
             
-            {/* Navigation */}
             <nav className="flex items-center space-x-4">
               {navLinks.map((link) => (
                 <Link
@@ -49,7 +47,7 @@ const Layout = ({ children, title = 'Cricket Auction App' }) => {
             </nav>
           </div>
         </div>
-      </header>
+      </header> */}
       
       {/* Page title */}
       <div className="bg-white shadow">
